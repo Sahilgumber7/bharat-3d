@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MapViewController — Indian states</title>
+<style>
+  :root {
+    --surface: #0E1535;
+    --panel: rgba(14,21,53,.78);
+    --ink: rgba(223,228,245,.92);
+    --muted: rgba(223,228,245,.55);
+    --accent: #E8A820;
+    --accent-ink: #0E1535;
+    --line: rgba(255,255,255,.14);
+    --hover: rgba(255,255,255,.07);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--surface); }
+  body {
+    font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink); overflow: hidden;
+    transition: background 240ms ease, color 240ms ease;
+  }
+  #stage { position: relative; width: 100%; height: 100%; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
+
+  .panel {
+    position: absolute; top: 16px; left: 16px; width: 258px;
+    max-height: calc(100% - 32px); display: flex; flex-direction: column;
+    padding: 12px; border-radius: 12px;
+    background: var(--panel); border: 1px solid var(--line);
+    backdrop-filter: blur(10px);
+    transition: background 240ms ease, border-color 240ms ease;
+  }
+  .panel h1 { margin: 0; font-size: 13px; letter-spacing: .2px; }
+  .panel .meta { font-size: 11.5px; color: var(--muted); margin-bottom: 9px; }
+  .panel .meta b { color: var(--accent); font-weight: 600; }
+
+  /* palette switcher */
+  .themes { display: flex; gap: 5px; margin-bottom: 9px; }
+  .themes button {
+    flex: 1; display: grid; gap: 3px; justify-items: center;
+    padding: 5px 2px 4px; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: transparent; color: var(--muted); font: inherit; font-size: 10px;
+  }
+  .themes button:hover { background: var(--hover); }
+  .themes button[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); }
+  .themes .sw { display: flex; width: 100%; height: 8px; border-radius: 2px; overflow: hidden; }
+  .themes .sw i { flex: 1; }
+
+  /* sequential ramp legend */
+  .legend { margin-bottom: 9px; }
+  .legend .bar { display: flex; height: 7px; border-radius: 2px; overflow: hidden; }
+  .legend .bar i { flex: 1; }
+  .legend .cap {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: var(--muted); margin-top: 3px;
+  }
+
+  input[type=search] {
+    width: 100%; padding: 6px 9px; margin-bottom: 7px;
+    border-radius: 8px; border: 1px solid var(--line);
+    background: var(--hover); color: inherit; font: inherit; font-size: 12px;
+  }
+  input[type=search]:focus { outline: none; border-color: var(--accent); }
+
+  .states { overflow-y: auto; display: grid; gap: 1px; padding-right: 2px; }
+  .states button {
+    display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
+    width: 100%; text-align: left; padding: 5px 8px;
+    border: 0; border-radius: 7px; background: transparent;
+    color: var(--ink); font: inherit; font-size: 12px; cursor: pointer;
+  }
+  .states button:hover { background: var(--hover); }
+  .states button[aria-current="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .states button i { font-style: normal; font-size: 10.5px; opacity: .6; }
+
+  .note {
+    margin-top: 9px; padding-top: 8px; font-size: 10.5px; line-height: 1.45;
+    border-top: 1px solid var(--line); color: var(--muted);
+  }
+  #status {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    font-size: 13px; color: var(--muted); pointer-events: none;
+  }
+  #status[hidden] { display: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="panel">
+    <h1>Indian states &amp; UTs</h1>
+    <div class="meta" id="meta">loading…</div>
+    <div class="themes" id="themes"></div>
+    <div class="legend">
+      <div class="bar" id="rampBar"></div>
+      <div class="cap"><span>smaller district</span><span>larger</span></div>
+    </div>
+    <input type="search" id="filter" placeholder="Filter states…" autocomplete="off" />
+    <div class="states" id="states"></div>
+    <div class="note">
+      Boundaries: DataMeet <em>maps</em>, Census 2011 — so Telangana and Ladakh are
+      absent, and district counts predate later reorganisations. Extrusion height
+      is derived from each district's own area, and fill steps the same ramp — so
+      colour and relief say the same thing. Neither is a statistic.
+    </div>
+  </div>
+  <div id="status">loading…</div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.128.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { MapViewController, buildStateMap, PALETTES, getPalette } from '../../src/index.js';
+import { STATES, STATE_COUNT, DISTRICT_COUNT, loadStateData } from '../../data/states/index.js';
+
+const stage = document.getElementById('stage');
+const statusEl = document.getElementById('status');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(stage.clientWidth, stage.clientHeight);
+renderer.localClippingEnabled = true;   // cross-section view
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, stage.clientWidth / stage.clientHeight, 0.5, 6000);
+
+const hemi = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
+scene.add(hemi);
+const key = new THREE.DirectionalLight(0xffffff, 0.7);
+key.position.set(140, 260, 120);
+scene.add(key);
+
+let grid = null;
+
+/* ------------------------------------------------------------------ *
+ * Palettes
+ *
+ * A palette owns everything colour: the scene surface, the lights, the
+ * grid, the panel's CSS custom properties, the toolbar theme, and the
+ * sequential ramp the districts step onto. Swapping one never rebuilds
+ * geometry — `recolor()` re-steps the existing materials.
+ * ------------------------------------------------------------------ */
+let palette = getPalette(localStorage.getItem('mvc-palette') || 'midnight');
+
+function applyPalette(p) {
+  palette = p;
+  localStorage.setItem('mvc-palette', p.id);
+
+  scene.background = new THREE.Color(p.surface);
+
+  hemi.color.set(p.lights.sky);
+  hemi.groundColor.set(p.lights.ground);
+  hemi.intensity = p.lights.hemi;
+  key.intensity = p.lights.key;
+
+  if (grid) { scene.remove(grid); grid.geometry.dispose(); grid.material.dispose(); }
+  grid = new THREE.GridHelper(900, 30, new THREE.Color(p.grid[0]), new THREE.Color(p.grid[1]));
+  grid.material.transparent = true;
+  grid.material.opacity = p.gridOpacity;
+  scene.add(grid);
+
+  const css = document.documentElement.style;
+  css.setProperty('--surface', p.surface);
+  css.setProperty('--panel', p.panel);
+  css.setProperty('--ink', p.ink.primary);
+  css.setProperty('--muted', p.ink.muted);
+  css.setProperty('--accent', p.theme.accent);
+  css.setProperty('--accent-ink', p.theme.accentContrast);
+  css.setProperty('--line', p.theme.border);
+  css.setProperty('--hover', p.mode === 'light' ? 'rgba(11,11,11,.06)' : 'rgba(255,255,255,.07)');
+  document.documentElement.style.colorScheme = p.mode;
+
+  current?.recolor(p.ramp);
+  mvc?.setTheme(p.theme);
+
+  document.getElementById('rampBar').innerHTML =
+    p.ramp.map((c) => `<i style="background:${c}"></i>`).join('');
+  paintThemes();
+}
+
+function paintThemes() {
+  document.getElementById('themes').innerHTML = PALETTES.map(
+    (p) => `<button type="button" data-palette="${p.id}" aria-pressed="${p.id === palette.id}"
+      title="${p.label} — ${p.mode} theme">
+      <span class="sw">${p.ramp.map((c) => `<i style="background:${c}"></i>`).join('')}</span>
+      <span>${p.label}</span></button>`
+  ).join('');
+}
+
+document.getElementById('themes').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-palette]');
+  if (btn) applyPalette(getPalette(btn.dataset.palette));
+});
+
+/* ------------------------------------------------------------------ *
+ * State switching
+ *
+ * The controller is rebuilt per state because `stateConfig` changes
+ * wholesale. Everything else — scene, camera, renderer — is reused.
+ * ------------------------------------------------------------------ */
+const registry = { states: STATES, stateCount: STATE_COUNT, districtCount: DISTRICT_COUNT };
+
+const listEl = document.getElementById('states');
+const metaEl = document.getElementById('meta');
+const cache = new Map();
+
+let mvc = null;
+let current = null;   // { group, dispose }
+let activeSlug = null;
+let loadToken = 0;
+
+function renderList(filter = '') {
+  const q = filter.trim().toLowerCase();
+  listEl.innerHTML = registry.states
+    .filter((s) => !q || s.name.toLowerCase().includes(q))
+    .map(
+      (s) => `<button type="button" data-slug="${s.slug}"
+        aria-current="${s.slug === activeSlug}">
+        <span>${s.name}</span><i>${s.districtCount}</i></button>`
+    )
+    .join('');
+}
+
+async function loadState(slug) {
+  const entry = registry.states.find((s) => s.slug === slug);
+  if (!entry) return;
+
+  const token = ++loadToken;
+  statusEl.hidden = false;
+  statusEl.textContent = `loading ${entry.name}…`;
+
+  if (!cache.has(slug)) cache.set(slug, await loadStateData(slug));
+  // A newer click landed while this state was in flight — drop this one.
+  if (token !== loadToken) return;
+
+  const data = cache.get(slug);
+
+  // Tear down the previous state before building the next.
+  mvc?.destroy();
+  if (current) {
+    scene.remove(current.group);
+    current.dispose();
+  }
+
+  const built = buildStateMap(data, { span: 240, ramp: palette.ramp });
+  scene.add(built.group);
+  current = built;
+
+  // Districts get further apart as their count rises; scale the spread down so
+  // dense states (UP's 71) stay legible and sparse ones still separate.
+  const n = built.districts.length;
+  built.stateConfig.explode = { factor: THREE.MathUtils.clamp(1.6 / Math.sqrt(n), 0.18, 0.6) };
+  built.stateConfig.firstPerson = { eyeHeight: 14 };
+
+  const keepView = mvc ? mvc.getView() : null;
+  mvc = new MapViewController(scene, camera, built.stateConfig, {
+    renderer,
+    theme: palette.theme,
+    duration: 750,
+    initialView: keepView || 'isometric',
+    onViewChange: (id) => { view = id; paintMeta(); },
+  });
+  window.mvc = mvc;
+
+  activeSlug = slug;
+  view = mvc.getView();
+  paintMeta();
+  renderList(document.getElementById('filter').value);
+  statusEl.hidden = true;
+}
+
+let view = 'isometric';
+function paintMeta() {
+  const entry = registry.states.find((s) => s.slug === activeSlug);
+  metaEl.innerHTML = entry
+    ? `${entry.districtCount} districts · view <b>${view}</b>`
+    : `${registry.stateCount} states · ${registry.districtCount} districts`;
+}
+
+listEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-slug]');
+  if (btn) loadState(btn.dataset.slug);
+});
+document.getElementById('filter').addEventListener('input', (e) => renderList(e.target.value));
+
+addEventListener('keydown', (e) => {
+  if (e.target.matches('input')) return;
+  const i = Number(e.key) - 1;
+  if (mvc && i >= 0 && i < mvc.viewIds.length) mvc.setView(mvc.viewIds[i]);
+});
+
+addEventListener('resize', () => {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  mvc?.refresh();
+});
+
+(function tick() {
+  requestAnimationFrame(tick);
+  renderer.render(scene, camera);
+})();
+
+renderList();
+applyPalette(palette);
+// Deep link: /examples/india/#kerala
+const initial = location.hash.slice(1);
+await loadState(registry.states.some((s) => s.slug === initial) ? initial : 'bihar');
+</script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+{
+  "name": "@bharat3d/state-maps",
+  "version": "0.1.0",
+  "description": "3D maps of every Indian state and UT for Three.js \u2014 641 districts, six camera presets (isometric, cross-section, top-down, elevation, walkthrough, exploded), themeable.",
+  "keywords": [
+    "threejs",
+    "3d",
+    "map",
+    "india",
+    "states",
+    "districts",
+    "choropleth",
+    "cross-section",
+    "exploded-view",
+    "data-visualization"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./src/index.js",
+  "module": "./src/index.js",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./data": {
+      "types": "./src/data.d.ts",
+      "default": "./data/states/index.js"
+    },
+    "./data/*": "./data/states/*",
+    "./react": {
+      "types": "./src/react.d.ts",
+      "default": "./src/react.js"
+    },
+    "./views": "./src/views.js",
+    "./palettes": "./src/palettes.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "data",
+    "bin",
+    "templates",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "demo": "npx --yes serve . -l 5173",
+    "build:data": "node tools/build-state-data.mjs",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "peerDependencies": {
+    "three": ">=0.128.0",
+    "react": ">=17"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "types": "./src/index.d.ts",
+  "bin": {
+    "state-maps": "./bin/cli.mjs"
+  },
+  "devDependencies": {
+    "react": "^18.3.1",
+    "three": "^0.160.0"
+  }
+}

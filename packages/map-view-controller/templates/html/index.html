@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>__NAME__ — 3D district map</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0E1535; }
+  /* The map fills its container, so give the container a size. */
+  #map { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://esm.sh/three@0.160.0",
+      "__PKG__": "https://esm.sh/__PKG__@__VERSION__",
+      "__PKG__/": "https://esm.sh/__PKG__@__VERSION__/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import { createStateMap } from '__PKG__';
+    import { loadStateData } from '__PKG__/data';
+
+    // __NAME__ — __DISTRICTS__ districts.
+    const map = await createStateMap({
+      container: '#map',
+      state: '__SLUG__',
+      load: loadStateData,
+      palette: 'midnight',   // midnight · paper · ember · aqua
+      view: 'isometric',
+    });
+
+    // Handy while building: `map` in the console, keys 1–6 for the six views.
+    globalThis.map = map;
+    addEventListener('keydown', (e) => {
+      const views = map.controller.viewIds;
+      const i = Number(e.key) - 1;
+      if (i >= 0 && i < views.length) map.setView(views[i]);
+    });
+  </script>
+</body>
+</html>
