@@ -350,6 +350,27 @@
   }
   #status[hidden] { display: none; }
 
+  /* Cursor-anchored hover tooltip — replaces showing a hovered feature's
+     name in the centre-screen #status banner, which reads as a modal
+     announcement rather than a label attached to the thing under the
+     pointer. #status stays reserved for real state (loading, errors). */
+  #tooltip {
+    position: fixed; z-index: 5; pointer-events: none;
+    transform: translate(-50%, -100%);
+    padding: 5px 10px; border-radius: 8px;
+    background: var(--tooltip-bg, rgba(10,10,12,.92)); color: #fff;
+    font: 600 11.5px "Space Grotesk", sans-serif; letter-spacing: -.01em;
+    white-space: nowrap;
+    box-shadow: 0 8px 20px -8px rgba(0,0,0,.5);
+    opacity: 0; transition: opacity 100ms ease;
+  }
+  #tooltip .kind {
+    display: block; font: 500 8.5px "Space Grotesk", sans-serif; letter-spacing: .08em;
+    text-transform: uppercase; color: rgba(255,255,255,.55); margin-bottom: 1px;
+  }
+  #tooltip.show { opacity: 1; }
+  @media (pointer: coarse) { #tooltip { display: none; } } /* touch has no hover to anchor to */
+
   ::-webkit-scrollbar { width: 8px; }
   ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
 
@@ -505,6 +526,7 @@
     </div>
   </div>
   <div id="status">loading…</div>
+  <div id="tooltip"></div>
 </div>
 
 <script type="importmap">
@@ -847,6 +869,12 @@ function applyPalette(p) {
   document.documentElement.style.colorScheme = p.mode;
 
   current?.recolor(p.ramp);
+  // The national overview is built once and reused across state visits — its
+  // per-state fills need to be re-stepped by hand on every palette switch,
+  // the same way current?.recolor() does for a state's districts.
+  overview?.states.forEach((s) => {
+    s.mesh.material.color.set(p.ramp[s.rampIndex % p.ramp.length]);
+  });
   mvc?.setTheme(p.theme);
   if (split) {
     split.pieces.forEach((piece) => piece.mesh.material.color.set(rampStep(p.ramp, piece.t)));
@@ -998,7 +1026,7 @@ async function buildOverview() {
     const stateGroup = new THREE.Group();
     stateGroup.add(mesh);
     group.add(stateGroup);
-    states.push({ slug: s.slug, name: s.name, group: stateGroup });
+    states.push({ slug: s.slug, name: s.name, group: stateGroup, mesh, rampIndex: i % palette.ramp.length });
   });
 
   group.updateMatrixWorld(true);
@@ -1119,6 +1147,8 @@ async function swishIn(dir = 1) {
 async function goToIndia() {
   if (tier === 'india' || !mvc) return;
   hardCollapseSplit();
+  hoveredMesh = null;
+  hideTooltip();
   // A deep link (e.g. #kerala) opens straight into a state and never builds
   // the overview — do it now, first time "India" is actually clicked.
   if (!overview) {
@@ -1318,12 +1348,29 @@ function splitDistrict(mesh, name) {
   mvc.setView('focus');
   tier = 'district';
   paintCrumbs();
-  flashStatus(`${name} — ${pieces.length} sub-districts`);
+  paintMeta();
 }
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let pointerDownAt = null;
+
+/* ------------------------------------------------------------------ *
+ * Hover tooltip — a small cursor-anchored label naming whatever's under
+ * the pointer (state / district / sub-district), instead of announcing
+ * it in the centre-screen #status banner. Pure DOM position tracking;
+ * no raycasting lives in here, callers just hand it text + a point.
+ * ------------------------------------------------------------------ */
+const tooltipEl = document.getElementById('tooltip');
+function showTooltip(clientX, clientY, kind, name) {
+  tooltipEl.innerHTML = `<span class="kind">${kind}</span>${name}`;
+  tooltipEl.style.left = `${clientX}px`;
+  tooltipEl.style.top = `${clientY - 14}px`;
+  tooltipEl.classList.add('show');
+}
+function hideTooltip() {
+  tooltipEl.classList.remove('show');
+}
 
 function pick(clientX, clientY) {
   const rect = renderer.domElement.getBoundingClientRect();
@@ -1369,19 +1416,55 @@ function setHoveredState(slug) {
   renderer.domElement.style.cursor = slug ? 'pointer' : 'default';
 }
 
+/** Cursor + a faint lift on whichever district/sub-district is under the pointer. */
+let hoveredMesh = null;
+function setHoveredMesh(mesh) {
+  if (hoveredMesh === mesh) return;
+  if (hoveredMesh) hoveredMesh.material.emissive.setScalar(0);
+  hoveredMesh = mesh;
+  if (hoveredMesh) hoveredMesh.material.emissive.setScalar(0.16);
+  renderer.domElement.style.cursor = mesh ? 'pointer' : 'default';
+}
+
 renderer.domElement.addEventListener('pointermove', (e) => {
-  if (tier !== 'india' || !overview) {
-    if (hoveredSlug) setHoveredState(null);
-    return;
-  }
   const rect = renderer.domElement.getBoundingClientRect();
   pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
-  const hit = raycaster.intersectObject(overview.group, true).find((h) => h.object.isMesh);
-  setHoveredState(hit?.object.userData.stateSlug || null);
+
+  if (tier === 'india') {
+    if (hoveredMesh) setHoveredMesh(null);
+    if (!overview) { hideTooltip(); return; }
+    const hit = raycaster.intersectObject(overview.group, true).find((h) => h.object.isMesh);
+    const slug = hit?.object.userData.stateSlug || null;
+    setHoveredState(slug);
+    if (slug) showTooltip(e.clientX, e.clientY, 'State / UT', hit.object.name);
+    else hideTooltip();
+    return;
+  }
+
+  if (hoveredSlug) setHoveredState(null);
+  const hits = current ? raycaster.intersectObject(current.group, true) : [];
+  const hit = hits.find((h) => h.object.isMesh && h.object.visible);
+  if (!hit) { setHoveredMesh(null); hideTooltip(); return; }
+
+  const obj = hit.object;
+  if (obj.userData.isSubdistrict) {
+    setHoveredMesh(obj);
+    showTooltip(e.clientX, e.clientY, 'Sub-district', obj.name);
+  } else if (obj.userData.isDistrict) {
+    setHoveredMesh(obj);
+    showTooltip(e.clientX, e.clientY, 'District', obj.name);
+  } else {
+    setHoveredMesh(null);
+    hideTooltip();
+  }
 });
-renderer.domElement.addEventListener('pointerleave', () => setHoveredState(null));
+renderer.domElement.addEventListener('pointerleave', () => {
+  setHoveredState(null);
+  setHoveredMesh(null);
+  hideTooltip();
+});
 
 function renderList(filter = '') {
   const q = filter.trim().toLowerCase();
@@ -1425,6 +1508,8 @@ async function loadState(slug, { fromOverview = false } = {}) {
     current.dispose();
   }
   hardCollapseSplit(); // dispose any open split's geometry before the group it lives in goes away
+  hoveredMesh = null;
+  hideTooltip();
   currentData = data;
 
   const built = buildStateMap(data, { ...SHAPE_OPTS, ramp: palette.ramp });
