@@ -358,6 +358,83 @@
     #intro { transition: opacity 200ms ease !important; }
     #stage { transition: opacity 200ms ease !important; transform: none !important; filter: none !important; }
   }
+
+  /* ------------------------------------------------------------------ *
+   * Tablet — the sidebar still lives on the left but narrower, so more
+   * of the map stays visible on a portrait/landscape tablet viewport.
+   * ------------------------------------------------------------------ */
+  @media (max-width: 1024px) {
+    .panel { width: 248px; }
+    .sidebarToggle { left: 264px; }
+    #stage.sidebar-collapsed .sidebarToggle { left: 0; }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Mobile — the sidebar becomes a bottom sheet (thumb-reachable, full
+   * width) instead of a left-hand column, which on a narrow viewport
+   * would either cover the whole map or squeeze to unreadable widths.
+   * The drawer handle moves to the sheet's top edge and flips to point
+   * up/down instead of left/right.
+   * ------------------------------------------------------------------ */
+  @media (max-width: 640px) {
+    .panel {
+      top: auto; bottom: 0; left: 0; right: 0; width: auto;
+      max-height: 62vh; border-radius: 20px 20px 0 0;
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+    }
+    #stage.sidebar-collapsed .panel {
+      transform: translateY(100%);
+    }
+    .sidebarToggle {
+      top: auto; bottom: 62vh; left: 50%; right: auto;
+      width: 68px; height: 26px;
+      transform: translate(-50%, 0);
+      border-radius: 14px 14px 0 0;
+      border: 1px solid var(--line); border-bottom: none;
+    }
+    .sidebarToggle svg { transform: rotate(-90deg); }
+    #stage.sidebar-collapsed .sidebarToggle {
+      bottom: 0; left: 50%;
+      transform: translate(-50%, 0);
+      padding-bottom: env(safe-area-inset-bottom);
+      height: calc(26px + env(safe-area-inset-bottom));
+    }
+    #stage.sidebar-collapsed .sidebarToggle svg { transform: rotate(90deg); }
+
+    /* Bigger, thumb-friendly touch targets throughout the sheet. */
+    .brand .mark { font-size: 17px; }
+    .stats { grid-template-columns: repeat(3, 1fr); }
+    .stats .chip { padding: 8px 6px; }
+    .themes button { padding: 8px 2px 7px; }
+    .crumbs button, .crumbs .current { padding: 6px 7px; font-size: 12.5px; }
+    input[type=search] { padding: 11px 12px; font-size: 16px; } /* 16px avoids iOS auto-zoom-on-focus */
+    .states button { padding: 10px 9px; font-size: 13.5px; }
+    .states { max-height: 34vh; }
+
+    .navTop { top: 12px; right: 12px; gap: 6px; }
+    .navTop button { padding: 8px 10px; }
+    .navTop button span { display: none; } /* icon-only: text labels don't fit next to the sheet */
+    .navTop button svg { width: 16px; height: 16px; }
+
+    .note { display: none; } /* the sheet is short on mobile; drop the help copy, not the controls */
+
+    /* The view-preset toolbar defaults to bottom-right, which the bottom
+       sheet now occupies whenever it's open — move it under the top-right
+       nav instead so it's never covered, expanded or not. */
+    .mvc-toolbar {
+      top: 60px !important; right: 12px !important;
+      bottom: auto !important; left: auto !important;
+      flex-direction: row !important;
+    }
+  }
+
+  /* Coarse-pointer safety net (covers odd viewport widths a breakpoint
+     alone would miss, e.g. a folded/tablet device reporting touch). */
+  @media (pointer: coarse) {
+    .sidebarToggle { width: 24px; height: 76px; }
+    .crumbs button { min-height: 30px; }
+    .states button { min-height: 40px; }
+  }
 </style>
 </head>
 <body>

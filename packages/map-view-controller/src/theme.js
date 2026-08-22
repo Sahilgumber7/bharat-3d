@@ -3,6 +3,11 @@
  * consumer can theme the toolbar to their own product without touching CSS.
  * These defaults are deliberately generic — no brand colours ship in the lib.
  */
+// Touch targets need to be larger than mouse ones (WCAG/Apple/Material all
+// land near 44px); guarded for environments with no `matchMedia` (SSR, tests).
+const isCoarsePointer =
+  typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+
 export const DEFAULT_THEME = {
   accent: '#7A7A85',          // active icon + highlight
   accentContrast: '#111114',  // text/icon drawn on top of the accent
@@ -14,7 +19,7 @@ export const DEFAULT_THEME = {
   tooltipBg: 'rgba(10, 10, 12, 0.94)',
   tooltipText: 'rgba(255, 255, 255, 0.92)',
   radius: '12px',
-  buttonSize: '38px',
+  buttonSize: isCoarsePointer ? '44px' : '38px',
   gap: '4px',
   padding: '5px',
   shadow: '0 8px 28px rgba(0, 0, 0, 0.34)',
