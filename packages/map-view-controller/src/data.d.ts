@@ -5,6 +5,7 @@ export interface StateEntry {
   slug: string;
   file: string;
   districtCount: number;
+  subDistrictCount: number;
   viewBox: [number, number];
 }
 
@@ -13,6 +14,7 @@ export declare const STATES: StateEntry[];
 export declare const SOURCE: string;
 export declare const STATE_COUNT: number;
 export declare const DISTRICT_COUNT: number;
+export declare const SUB_DISTRICT_COUNT: number;
 /** slug -> dynamic import, so bundlers can code-split each state. */
 export declare const loaders: Record<string, () => Promise<{ default: StateData }>>;
 export declare function findState(slug: string): StateEntry | undefined;

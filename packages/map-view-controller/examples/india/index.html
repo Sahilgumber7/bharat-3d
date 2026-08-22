@@ -3,96 +3,372 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>MapViewController — Indian states</title>
+<title>bharat3d — every Indian state in 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --surface: #0E1535;
-    --panel: rgba(14,21,53,.78);
-    --ink: rgba(223,228,245,.92);
-    --muted: rgba(223,228,245,.55);
-    --accent: #E8A820;
-    --accent-ink: #0E1535;
-    --line: rgba(255,255,255,.14);
-    --hover: rgba(255,255,255,.07);
+    /* Paper (light) defaults — matches the palette this page opens into
+       before applyPalette() runs its first pass. */
+    --surface: #fcfcfb;
+    --panel: rgba(252,252,251,.86);
+    --ink: #0b0b0b;
+    --muted: #52514e;
+    --accent: #6D28FF;
+    --accent-2: #4CF2FF;
+    --accent-ink: #ffffff;
+    --line: rgba(11,11,11,.14);
+    --hover: rgba(11,11,11,.06);
+    /* Intro mesh/loader colours — set from the *saved* palette before first
+       paint (see the inline script right after <body>), so the intro never
+       shows a different palette than the dashboard it opens into. */
+    --i1: #B24BFF; --i2: #4CF2FF; --i3: #7A6BFF; --i4: #C6FF3D;
+    --i-surface: #07060c;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--surface); }
   body {
-    font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 14px/1.5 "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
     color: var(--ink); overflow: hidden;
     transition: background 240ms ease, color 240ms ease;
   }
-  #stage { position: relative; width: 100%; height: 100%; }
+  #stage {
+    position: relative; width: 100%; height: 100%;
+    transform: scale(1.1); filter: blur(14px); opacity: 0;
+    transition: transform 1100ms cubic-bezier(.16,1,.3,1), filter 1100ms cubic-bezier(.16,1,.3,1), opacity 900ms ease;
+  }
+  #stage.in { transform: scale(1); filter: blur(0); opacity: 1; }
   #stage canvas { display: block; width: 100%; height: 100%; }
 
+  /* ---------------------------------------------------------------- *
+   * Intro — animated gradient-mesh hero, gone once the dashboard's
+   * first state has actually loaded (never a fixed-time fake wait).
+   * ---------------------------------------------------------------- */
+  #intro {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--i-surface); overflow: hidden; cursor: pointer;
+    transition: opacity 700ms ease, filter 700ms ease, visibility 700ms;
+  }
+  #intro::before {
+    content: ''; position: absolute; inset: -20%;
+    background:
+      radial-gradient(38% 42% at 22% 28%, var(--i1) 0%, transparent 68%),
+      radial-gradient(34% 40% at 78% 24%, var(--i2) 0%, transparent 65%),
+      radial-gradient(46% 50% at 68% 78%, var(--i3) 0%, transparent 68%),
+      radial-gradient(40% 46% at 20% 80%, var(--i4) 0%, transparent 70%);
+    filter: blur(60px) saturate(150%);
+    opacity: .75;
+    animation: meshDrift 12s ease-in-out infinite alternate;
+  }
+  #intro::after {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(120% 90% at 50% 50%, transparent 40%, var(--i-surface) 92%);
+  }
+  @keyframes meshDrift {
+    0%   { transform: rotate(0deg) scale(1); }
+    25%  { transform: rotate(6deg) scale(1.08); }
+    50%  { transform: rotate(-4deg) scale(1.15); }
+    75%  { transform: rotate(4deg) scale(1.05); }
+    100% { transform: rotate(-6deg) scale(1.1); }
+  }
+  #intro.exit { opacity: 0; filter: blur(24px); visibility: hidden; }
+  #intro.exit::before { animation-play-state: paused; transition: transform 700ms ease; transform: scale(1.4); }
+
+  /* slow-spinning conic sheen ring behind the wordmark — pure decoration */
+  #intro .ring {
+    position: absolute; top: 50%; left: 50%; z-index: 0;
+    width: min(78vw, 820px); height: min(78vw, 820px);
+    transform: translate(-50%, -50%) rotate(0deg);
+    border-radius: 50%;
+    background: conic-gradient(from 0deg,
+      transparent 0deg, color-mix(in srgb, var(--i1) 28%, transparent) 60deg, transparent 130deg,
+      color-mix(in srgb, var(--i2) 24%, transparent) 190deg, transparent 260deg,
+      color-mix(in srgb, var(--i3) 24%, transparent) 320deg, transparent 360deg);
+    -webkit-mask: radial-gradient(closest-side, transparent 62%, #000 64%, #000 68%, transparent 70%);
+    mask: radial-gradient(closest-side, transparent 62%, #000 64%, #000 68%, transparent 70%);
+    animation: ringSpin 9s linear infinite;
+    opacity: .8;
+  }
+  @keyframes ringSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+  .sound-toggle {
+    position: absolute; top: 20px; right: 20px; z-index: 2;
+    display: flex; align-items: center; gap: 7px;
+    padding: 7px 12px; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06);
+    color: rgba(255,255,255,.7); font: 500 10.5px/1 "Space Grotesk", sans-serif;
+    letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
+    opacity: 0; animation: introUp 600ms ease 200ms forwards;
+    transition: background 140ms ease, color 140ms ease;
+  }
+  .sound-toggle:hover { background: rgba(255,255,255,.12); color: #fff; }
+  .sound-toggle svg { width: 13px; height: 13px; display: block; }
+
+  #intro .hero { position: relative; z-index: 1; text-align: center; padding: 0 20px; }
+  #intro .kicker {
+    font: 600 11px/1 "Space Grotesk", sans-serif; letter-spacing: .28em; text-transform: uppercase;
+    color: rgba(255,255,255,.55); margin-bottom: 18px;
+    opacity: 0; transform: translateY(8px);
+    animation: introUp 700ms cubic-bezier(.16,1,.3,1) 120ms forwards;
+  }
+  #intro h1 {
+    margin: 0; font-family: "Bricolage Grotesque", "Space Grotesk", sans-serif;
+    font-weight: 800; font-size: clamp(56px, 12vw, 148px); line-height: .92; letter-spacing: -.03em;
+    background: linear-gradient(120deg,
+      #fff 6%,
+      color-mix(in srgb, var(--i1) 55%, #fff) 32%,
+      color-mix(in srgb, var(--i2) 55%, #fff) 55%,
+      color-mix(in srgb, var(--i3) 55%, #fff) 78%,
+      #fff 96%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    opacity: 0; transform: translateY(18px) scale(.94); filter: blur(6px);
+    animation:
+      introUp 900ms cubic-bezier(.16,1,.3,1) 260ms forwards,
+      heroShine 5s linear 1.2s infinite;
+  }
+  @keyframes introUp { to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
+  @keyframes heroShine { to { background-position: -220% 0; } }
+
+  #intro .tagline {
+    margin: 18px 0 0; font: 500 16px/1.5 "Inter", sans-serif; color: rgba(255,255,255,.7);
+    max-width: 480px; margin-inline: auto;
+    opacity: 0; transform: translateY(8px);
+    animation: introUp 700ms cubic-bezier(.16,1,.3,1) 520ms forwards;
+  }
+  #intro .tagline b { color: #fff; font-weight: 600; }
+
+  #intro .counters { display: flex; gap: 28px; justify-content: center; margin-top: 22px; }
+  #intro .counters .c {
+    opacity: 0; transform: translateY(8px); animation: introUp 600ms cubic-bezier(.16,1,.3,1) forwards;
+  }
+  #intro .counters .c:nth-child(1) { animation-delay: 520ms; }
+  #intro .counters .c:nth-child(2) { animation-delay: 620ms; }
+  #intro .counters .c:nth-child(3) { animation-delay: 720ms; }
+  #intro .counters b {
+    display: block; font-family: "Space Grotesk", sans-serif; font-weight: 700;
+    font-size: clamp(20px, 3vw, 30px); letter-spacing: -.01em;
+    background: linear-gradient(120deg, #fff, #cbb4ff);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  #intro .counters span {
+    font: 600 9.5px/1 "Space Grotesk", sans-serif; letter-spacing: .1em; text-transform: uppercase;
+    color: rgba(255,255,255,.4);
+  }
+
+  #intro .loader {
+    margin-top: 34px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+    opacity: 0; animation: introUp 600ms ease 820ms forwards;
+  }
+  #intro .track { width: 260px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.14); overflow: hidden; }
+  #intro .fill {
+    height: 100%; width: 0%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--i1), var(--i2), var(--i3));
+    transition: width 420ms cubic-bezier(.4,0,.2,1);
+  }
+  #intro .hint {
+    font: 500 10.5px/1 "Space Grotesk", sans-serif; letter-spacing: .1em; text-transform: uppercase;
+    color: rgba(255,255,255,.4);
+    min-width: 220px; text-align: center;
+    transition: opacity 200ms ease;
+  }
+  #intro .skiphint {
+    margin-top: 26px; font: 500 9.5px/1 "Inter", sans-serif; letter-spacing: .03em;
+    color: rgba(255,255,255,.28);
+    opacity: 0; animation: introUp 600ms ease 1400ms forwards;
+  }
+
+  /* ambient glow behind everything — pure CSS, no assets */
+  #glow {
+    position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(680px 480px at 8% 8%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%),
+      radial-gradient(600px 460px at 92% 88%, color-mix(in srgb, var(--accent-2) 22%, transparent), transparent 70%);
+    opacity: .55; mix-blend-mode: screen;
+    transition: background 320ms ease;
+  }
+
   .panel {
-    position: absolute; top: 16px; left: 16px; width: 258px;
+    position: absolute; top: 16px; left: 16px; width: 288px; z-index: 2;
     max-height: calc(100% - 32px); display: flex; flex-direction: column;
-    padding: 12px; border-radius: 12px;
-    background: var(--panel); border: 1px solid var(--line);
-    backdrop-filter: blur(10px);
+    padding: 16px; border-radius: 20px;
+    background:
+      linear-gradient(160deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent 40%),
+      var(--panel);
+    border: 1px solid var(--line);
+    box-shadow: 0 24px 60px -20px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
+    backdrop-filter: blur(16px);
     transition: background 240ms ease, border-color 240ms ease;
   }
-  .panel h1 { margin: 0; font-size: 13px; letter-spacing: .2px; }
-  .panel .meta { font-size: 11.5px; color: var(--muted); margin-bottom: 9px; }
-  .panel .meta b { color: var(--accent); font-weight: 600; }
+
+  .brand { display: flex; align-items: baseline; gap: 7px; margin-bottom: 3px; }
+  .brand .mark {
+    font-family: "Space Grotesk", ui-sans-serif, sans-serif;
+    font-weight: 700; font-size: 19px; letter-spacing: -.02em;
+    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .brand .tag {
+    font-size: 9.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--accent-ink); background: var(--accent); padding: 2px 6px; border-radius: 999px;
+  }
+  .panel .meta { font-size: 11.5px; color: var(--muted); margin-bottom: 12px; }
+  .panel .meta b { color: var(--ink); font-weight: 600; }
+
+  .crumbs { display: flex; align-items: center; gap: 3px; font-size: 11.5px; margin-bottom: 4px; flex-wrap: wrap; }
+  .crumbs button {
+    background: transparent; border: 0; padding: 2px 5px; border-radius: 6px;
+    color: var(--muted); font: inherit; font-size: 11.5px; cursor: pointer;
+  }
+  .crumbs button:hover { background: var(--hover); color: var(--ink); }
+  .crumbs .sep { color: var(--muted); opacity: .45; }
+  .crumbs .current { color: var(--ink); font-weight: 600; padding: 2px 5px; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; }
+  .stats .chip {
+    border: 1px solid var(--line); border-radius: 12px; padding: 7px 6px;
+    background: var(--hover); text-align: center;
+  }
+  .stats .chip b {
+    display: block; font-family: "Space Grotesk", sans-serif; font-size: 15px; font-weight: 700;
+    letter-spacing: -.01em;
+  }
+  .stats .chip span { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 
   /* palette switcher */
-  .themes { display: flex; gap: 5px; margin-bottom: 9px; }
+  .themes { display: flex; gap: 5px; margin-bottom: 10px; }
   .themes button {
-    flex: 1; display: grid; gap: 3px; justify-items: center;
-    padding: 5px 2px 4px; cursor: pointer;
-    border: 1px solid var(--line); border-radius: 8px;
+    flex: 1; display: grid; gap: 4px; justify-items: center;
+    padding: 6px 2px 5px; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 10px;
     background: transparent; color: var(--muted); font: inherit; font-size: 10px;
+    transition: border-color 140ms ease, transform 140ms ease;
   }
-  .themes button:hover { background: var(--hover); }
+  .themes button:hover { background: var(--hover); transform: translateY(-1px); }
   .themes button[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); }
-  .themes .sw { display: flex; width: 100%; height: 8px; border-radius: 2px; overflow: hidden; }
+  .themes .sw { display: flex; width: 100%; height: 9px; border-radius: 3px; overflow: hidden; }
   .themes .sw i { flex: 1; }
 
   /* sequential ramp legend */
-  .legend { margin-bottom: 9px; }
-  .legend .bar { display: flex; height: 7px; border-radius: 2px; overflow: hidden; }
+  .legend { margin-bottom: 10px; }
+  .legend .bar { display: flex; height: 8px; border-radius: 3px; overflow: hidden; }
   .legend .bar i { flex: 1; }
   .legend .cap {
     display: flex; justify-content: space-between;
-    font-size: 10px; color: var(--muted); margin-top: 3px;
+    font-size: 10px; color: var(--muted); margin-top: 4px;
   }
 
   input[type=search] {
-    width: 100%; padding: 6px 9px; margin-bottom: 7px;
-    border-radius: 8px; border: 1px solid var(--line);
-    background: var(--hover); color: inherit; font: inherit; font-size: 12px;
+    width: 100%; padding: 8px 10px; margin-bottom: 8px;
+    border-radius: 10px; border: 1px solid var(--line);
+    background: var(--hover); color: inherit; font: inherit; font-size: 12.5px;
   }
   input[type=search]:focus { outline: none; border-color: var(--accent); }
 
-  .states { overflow-y: auto; display: grid; gap: 1px; padding-right: 2px; }
+  .states { overflow-y: auto; display: grid; gap: 2px; padding-right: 2px; }
   .states button {
     display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
-    width: 100%; text-align: left; padding: 5px 8px;
-    border: 0; border-radius: 7px; background: transparent;
-    color: var(--ink); font: inherit; font-size: 12px; cursor: pointer;
+    width: 100%; text-align: left; padding: 6px 9px;
+    border: 0; border-radius: 8px; background: transparent;
+    color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer;
+    transition: background 120ms ease;
   }
   .states button:hover { background: var(--hover); }
-  .states button[aria-current="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .states button[aria-current="true"] {
+    background: linear-gradient(120deg, var(--accent), color-mix(in srgb, var(--accent) 60%, var(--accent-2)));
+    color: var(--accent-ink); font-weight: 600;
+  }
   .states button i { font-style: normal; font-size: 10.5px; opacity: .6; }
+  .states button[aria-current="true"] i { opacity: .75; }
 
   .note {
-    margin-top: 9px; padding-top: 8px; font-size: 10.5px; line-height: 1.45;
+    margin-top: 10px; padding-top: 9px; font-size: 10.5px; line-height: 1.5;
     border-top: 1px solid var(--line); color: var(--muted);
   }
   #status {
-    position: absolute; inset: 0; display: grid; place-items: center;
-    font-size: 13px; color: var(--muted); pointer-events: none;
+    position: absolute; inset: 0; display: grid; place-items: center; z-index: 3;
+    font: 600 13px "Space Grotesk", sans-serif; color: var(--muted); pointer-events: none;
+    letter-spacing: -.01em;
   }
   #status[hidden] { display: none; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #intro, #intro *, #intro::before { animation: none !important; }
+    #intro { transition: opacity 200ms ease !important; }
+    #stage { transition: opacity 200ms ease !important; transform: none !important; filter: none !important; }
+  }
 </style>
 </head>
 <body>
+<script>
+  // Recolour the intro to match whichever palette is saved from last visit —
+  // runs before #intro is even parsed, so there's no flash of the wrong hue.
+  // Kept as a tiny literal table (not an import of palettes.js) so it can run
+  // synchronously with zero module-fetch latency.
+  (function () {
+    var ACCENTS = { midnight: '#B24BFF', paper: '#6D28FF', ember: '#C6FF3D', aqua: '#FF3DAE' };
+    var id = localStorage.getItem('mvc-palette') || 'paper';
+    var hex = ACCENTS[id] || ACCENTS.midnight;
+    function hueRotate(hex, deg) {
+      var n = parseInt(hex.slice(1), 16);
+      var r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+      var max = Math.max(r, g, b), min = Math.min(r, g, b);
+      var h = 0, s = 0, l = (max + min) / 2, d = max - min;
+      if (d) {
+        s = d / (1 - Math.abs(2 * l - 1));
+        if (max === r) h = ((g - b) / d) % 6;
+        else if (max === g) h = (b - r) / d + 2;
+        else h = (r - g) / d + 4;
+        h *= 60; if (h < 0) h += 360;
+      }
+      h = (h + deg) % 360;
+      return 'hsl(' + h.toFixed(0) + ' ' + Math.round(s * 100) + '% ' + Math.round(Math.min(l * 100 + 6, 78)) + '%)';
+    }
+    var root = document.documentElement.style;
+    root.setProperty('--i1', hex);
+    root.setProperty('--i2', hueRotate(hex, 130));
+    root.setProperty('--i3', hueRotate(hex, 250));
+    root.setProperty('--i4', hueRotate(hex, 45));
+  })();
+</script>
+<div id="intro" role="button" tabindex="0" aria-label="Skip intro">
+  <button type="button" class="sound-toggle" id="soundToggle" aria-pressed="false">
+    <svg id="soundIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="4 8 8 8 12 4 12 20 8 16 4 16 4 8"></polygon>
+      <line x1="17" y1="8" x2="21" y2="16"></line>
+      <line x1="21" y1="8" x2="17" y2="16"></line>
+    </svg>
+    <span id="soundLabel">sound off</span>
+  </button>
+  <div class="ring"></div>
+  <div class="hero">
+    <div class="kicker">bharatlas · LGD 2024</div>
+    <h1>bharat3d</h1>
+    <p class="tagline">Every Indian state, district and sub-district, mapped in 3D.</p>
+    <div class="counters">
+      <div class="c"><b id="cStates">0</b><span>states</span></div>
+      <div class="c"><b id="cDistricts">0</b><span>districts</span></div>
+      <div class="c"><b id="cSub">0</b><span>sub-dist.</span></div>
+    </div>
+    <div class="loader">
+      <div class="track"><div class="fill" id="introFill"></div></div>
+      <div class="hint" id="introHint">waking up the atlas…</div>
+    </div>
+    <div class="skiphint">click or press space to skip</div>
+  </div>
+</div>
 <div id="stage">
+  <div id="glow"></div>
   <div class="panel">
-    <h1>Indian states &amp; UTs</h1>
+    <div class="brand"><span class="mark">bharat3d</span><span class="tag">beta</span></div>
+    <div class="crumbs" id="crumbs"></div>
     <div class="meta" id="meta">loading…</div>
+    <div class="stats" id="stats"></div>
     <div class="themes" id="themes"></div>
     <div class="legend">
       <div class="bar" id="rampBar"></div>
@@ -101,10 +377,10 @@
     <input type="search" id="filter" placeholder="Filter states…" autocomplete="off" />
     <div class="states" id="states"></div>
     <div class="note">
-      Boundaries: DataMeet <em>maps</em>, Census 2011 — so Telangana and Ladakh are
-      absent, and district counts predate later reorganisations. Extrusion height
-      is derived from each district's own area, and fill steps the same ramp — so
-      colour and relief say the same thing. Neither is a statistic.
+      Click a district to zoom into its sub-districts. Click empty space to
+      zoom back out.
+      <br /><br />
+      Boundaries: bharatlas.com LGD 2024 snapshot — 785 districts, 28 states + 8 UTs.
     </div>
   </div>
   <div id="status">loading…</div>
@@ -116,11 +392,199 @@
 
 <script type="module">
 import * as THREE from 'three';
-import { MapViewController, buildStateMap, PALETTES, getPalette } from '../../src/index.js';
-import { STATES, STATE_COUNT, DISTRICT_COUNT, loadStateData } from '../../data/states/index.js';
+import { MapViewController, buildStateMap, buildPieces, parsePath, PALETTES, getPalette, rampStep, DEFAULT_VIEWS, fitBox } from '../../src/index.js';
+
+// Shared with the ad-hoc sub-district build below, so a split piece lands in
+// exactly the same world space and reads at the same scale as its siblings.
+const SHAPE_OPTS = { span: 240, thickness: 4.5, relief: 0.35, gap: 0.01 };
+
+// Cross-section is a real feature (a clipping plane through the state) but
+// reads as a confusing near-duplicate of Isometric in a gallery like this —
+// drop it from the toolbar here without touching the library's default six.
+const VIEWS = DEFAULT_VIEWS.filter((v) => v.id !== 'crossSection');
+import { STATES, STATE_COUNT, DISTRICT_COUNT, SUB_DISTRICT_COUNT, loadStateData } from '../../data/states/index.js';
 
 const stage = document.getElementById('stage');
 const statusEl = document.getElementById('status');
+
+/* ------------------------------------------------------------------ *
+ * Intro → dashboard reveal.
+ *
+ * The bar tracks real work (module init, then the first state's fetch
+ * + mesh build) rather than a fake timer, but holds for a longer
+ * minimum beat — cycling hints and counting stats up — so the intro
+ * reads as a real sequence rather than a blip. Click/Enter/Space/Escape
+ * skips straight to the dashboard at any point.
+ * ------------------------------------------------------------------ */
+const introEl = document.getElementById('intro');
+const introFill = document.getElementById('introFill');
+const introHint = document.getElementById('introHint');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const introShownAt = performance.now();
+let revealed = false;
+
+function setProgress(pct, hint) {
+  introFill.style.width = `${pct}%`;
+  if (hint) introHint.textContent = hint;
+}
+
+// Count each stat chip up from 0, eased, timed to land as the bar fills.
+function countUp(el, to, ms) {
+  const t0 = performance.now();
+  const ease = (t) => 1 - (1 - t) ** 3;
+  (function tick() {
+    const t = Math.min(1, (performance.now() - t0) / ms);
+    el.textContent = Math.round(to * ease(t)).toLocaleString();
+    if (t < 1) requestAnimationFrame(tick);
+  })();
+}
+
+const HINT_STAGES = [
+  'waking up the atlas…',
+  'indexing 36 states & UTs…',
+  'joining district boundaries…',
+  'projecting sub-district geometry…',
+  'stepping the colour ramp…',
+  'building the 3D mesh…',
+];
+let hintTimer = null;
+function cycleHints() {
+  let i = 0;
+  introHint.textContent = HINT_STAGES[0];
+  hintTimer = setInterval(() => {
+    i = Math.min(i + 1, HINT_STAGES.length - 1);
+    introHint.style.opacity = 0;
+    setTimeout(() => { introHint.textContent = HINT_STAGES[i]; introHint.style.opacity = 1; }, 180);
+  }, 620);
+}
+
+function reveal() {
+  if (revealed) return;
+  revealed = true;
+  clearInterval(hintTimer);
+  playChime();
+  stopAmbient();
+  stage.classList.add('in');
+  introEl.classList.add('exit');
+  setTimeout(() => introEl.remove(), reducedMotion ? 200 : 750);
+}
+
+function revealWhenReady() {
+  const minMs = reducedMotion ? 0 : 4200;
+  const elapsed = performance.now() - introShownAt;
+  setTimeout(reveal, Math.max(0, minMs - elapsed));
+}
+
+const skipIntro = (e) => {
+  if (e.type === 'keydown' && !['Enter', ' ', 'Escape'].includes(e.key)) return;
+  reveal();
+};
+introEl.addEventListener('click', skipIntro);
+introEl.addEventListener('keydown', skipIntro);
+
+if (!reducedMotion) {
+  cycleHints();
+  countUp(document.getElementById('cStates'), STATE_COUNT, 3200);
+  countUp(document.getElementById('cDistricts'), DISTRICT_COUNT, 3600);
+  countUp(document.getElementById('cSub'), SUB_DISTRICT_COUNT, 4000);
+} else {
+  document.getElementById('cStates').textContent = STATE_COUNT;
+  document.getElementById('cDistricts').textContent = DISTRICT_COUNT;
+  document.getElementById('cSub').textContent = SUB_DISTRICT_COUNT.toLocaleString();
+}
+
+setProgress(20);
+
+/* ------------------------------------------------------------------ *
+ * Sound — synthesised, no audio files. A soft rising pad while the
+ * atlas "loads," and a bright two-note chime on reveal. Muted by
+ * default (autoplay-with-sound is blocked anyway); the toggle — or any
+ * key/click — starts it.
+ * ------------------------------------------------------------------ */
+let actx = null, ambient = null, soundOn = false;
+const soundToggle = document.getElementById('soundToggle');
+const soundLabel = document.getElementById('soundLabel');
+
+function ensureAudio() {
+  if (actx) return actx;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  return actx;
+}
+
+function startAmbient() {
+  const ctx = ensureAudio();
+  if (ctx.state === 'suspended') ctx.resume();
+  if (ambient) return;
+  const master = ctx.createGain();
+  master.gain.value = 0;
+  master.connect(ctx.destination);
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 500;
+  filter.connect(master);
+
+  const oscs = [130.81, 196.0, 261.63].map((freq, i) => {
+    const o = ctx.createOscillator();
+    o.type = i === 0 ? 'sine' : 'triangle';
+    o.frequency.value = freq;
+    const g = ctx.createGain();
+    g.gain.value = 0.22 / (i + 1);
+    o.connect(g).connect(filter);
+    o.start();
+    return o;
+  });
+
+  const now = ctx.currentTime;
+  master.gain.linearRampToValueAtTime(0.16, now + 1.4);
+  filter.frequency.linearRampToValueAtTime(2200, now + 4);
+
+  ambient = { master, filter, oscs };
+}
+
+function stopAmbient() {
+  if (!ambient) return;
+  const ctx = actx;
+  const now = ctx.currentTime;
+  ambient.master.gain.cancelScheduledValues(now);
+  ambient.master.gain.linearRampToValueAtTime(0, now + 0.4);
+  const { oscs } = ambient;
+  setTimeout(() => oscs.forEach((o) => o.stop()), 500);
+  ambient = null;
+}
+
+function playChime() {
+  if (!soundOn) return;
+  const ctx = ensureAudio();
+  const now = ctx.currentTime;
+  [523.25, 784.0].forEach((freq, i) => {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = freq;
+    g.gain.value = 0;
+    o.connect(g).connect(ctx.destination);
+    const t = now + i * 0.09;
+    g.gain.linearRampToValueAtTime(0.18, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+    o.start(t);
+    o.stop(t + 0.9);
+  });
+}
+
+function setSound(on) {
+  soundOn = on;
+  soundToggle.setAttribute('aria-pressed', String(on));
+  soundLabel.textContent = on ? 'sound on' : 'sound off';
+  soundToggle.style.color = on ? 'var(--i1)' : '';
+  if (on) startAmbient(); else stopAmbient();
+}
+
+soundToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  setSound(!soundOn);
+});
+soundToggle.addEventListener('keydown', (e) => e.stopPropagation());
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -147,7 +611,26 @@ let grid = null;
  * sequential ramp the districts step onto. Swapping one never rebuilds
  * geometry — `recolor()` re-steps the existing materials.
  * ------------------------------------------------------------------ */
-let palette = getPalette(localStorage.getItem('mvc-palette') || 'midnight');
+let palette = getPalette(localStorage.getItem('mvc-palette') || 'paper');
+
+// A second accent, purely decorative (ambient glow, gradient text/pills) — one
+// hue-rotation off the palette's real accent so it never touches data colour.
+function accent2(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  let [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
+  const d = max - min;
+  if (d) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60; if (h < 0) h += 360;
+  }
+  h = (h + 130) % 360;
+  return `hsl(${h.toFixed(0)} ${Math.round(s * 100)}% ${Math.round(Math.min(l * 100 + 8, 78))}%)`;
+}
 
 function applyPalette(p) {
   palette = p;
@@ -172,6 +655,7 @@ function applyPalette(p) {
   css.setProperty('--ink', p.ink.primary);
   css.setProperty('--muted', p.ink.muted);
   css.setProperty('--accent', p.theme.accent);
+  css.setProperty('--accent-2', accent2(p.theme.accent));
   css.setProperty('--accent-ink', p.theme.accentContrast);
   css.setProperty('--line', p.theme.border);
   css.setProperty('--hover', p.mode === 'light' ? 'rgba(11,11,11,.06)' : 'rgba(255,255,255,.07)');
@@ -179,6 +663,7 @@ function applyPalette(p) {
 
   current?.recolor(p.ramp);
   mvc?.setTheme(p.theme);
+  if (split) split.pieces.forEach((piece) => piece.mesh.material.color.set(rampStep(p.ramp, piece.t)));
 
   document.getElementById('rampBar').innerHTML =
     p.ramp.map((c) => `<i style="background:${c}"></i>`).join('');
@@ -199,6 +684,12 @@ document.getElementById('themes').addEventListener('click', (e) => {
   if (btn) applyPalette(getPalette(btn.dataset.palette));
 });
 
+document.getElementById('stats').innerHTML = `
+  <div class="chip"><b>${STATE_COUNT}</b><span>states</span></div>
+  <div class="chip"><b>${DISTRICT_COUNT}</b><span>districts</span></div>
+  <div class="chip"><b>${SUB_DISTRICT_COUNT.toLocaleString()}</b><span>sub-dist.</span></div>
+`;
+
 /* ------------------------------------------------------------------ *
  * State switching
  *
@@ -215,6 +706,360 @@ let mvc = null;
 let current = null;   // { group, dispose }
 let activeSlug = null;
 let loadToken = 0;
+let currentData = null;   // the raw loaded state doc — carries each district's `subdistricts`
+let split = null;         // { name, mesh, subGroup, pieces, beforeView } for the one currently split-open district
+let tier = 'india';       // 'india' | 'state' | 'district' — drives the breadcrumb and what a click does
+let overview = null;      // { group, states, pose } — the flat all-India picker, built once and reused
+
+/* ------------------------------------------------------------------ *
+ * India overview — every state's districts, reprojected onto one
+ * shared real-geography canvas and flattened into a single silhouette
+ * per state. Each state doc already carries its own `bbox` (lon/lat)
+ * alongside its local pixel `viewBox`, so a point can be projected back
+ * to lon/lat with just those two — no extra data-pipeline work needed.
+ * ------------------------------------------------------------------ */
+async function buildOverview() {
+  if (!revealed) setProgress(55, 'assembling the national map…');
+
+  const perState = await Promise.all(
+    registry.states.map(async (s) => {
+      if (!cache.has(s.slug)) cache.set(s.slug, await loadStateData(s.slug));
+      const doc = cache.get(s.slug);
+      const [vw, vh] = doc.viewBox;
+      const [minLon, minLat, maxLon, maxLat] = doc.bbox;
+      const lat0 = (minLat + maxLat) / 2;
+      const kx = Math.cos((lat0 * Math.PI) / 180);
+      const scale = vw / ((maxLon - minLon) * kx);
+      const toLonLat = ([x, y]) => [minLon + x / scale / kx, maxLat - y / scale];
+      return {
+        slug: s.slug,
+        name: s.name,
+        districts: doc.districts.map((d) => ({
+          rings: parsePath(d.path).map((ring) => ring.map(toLonLat)),
+        })),
+      };
+    })
+  );
+  if (!revealed) setProgress(85, 'projecting state outlines…');
+
+  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
+  for (const s of perState) {
+    for (const d of s.districts) {
+      for (const ring of d.rings) {
+        for (const [lon, lat] of ring) {
+          if (lon < minLon) minLon = lon;
+          if (lon > maxLon) maxLon = lon;
+          if (lat < minLat) minLat = lat;
+          if (lat > maxLat) maxLat = lat;
+        }
+      }
+    }
+  }
+  const lat0 = (minLat + maxLat) / 2;
+  const kx = Math.cos((lat0 * Math.PI) / 180);
+  const NATIONAL_SPAN = 320;
+  const scale = NATIONAL_SPAN / ((maxLon - minLon) * kx);
+  const viewH = (maxLat - minLat) * scale;
+  // X is mirrored (east -> more negative world X): with this camera's up set
+  // to true north, screen-right works out to world -X, so this mirror is
+  // what lands east on the right of the screen. Verified against real
+  // states' lat/lon — re-check both axes if this ever moves.
+  const project = ([lon, lat]) => [
+    -(lon - minLon) * kx * scale + NATIONAL_SPAN / 2,
+    (maxLat - lat) * scale - viewH / 2,
+  ];
+
+  const group = new THREE.Group();
+  const states = [];
+
+  perState.forEach((s, i) => {
+    const color = new THREE.Color(palette.ramp[i % palette.ramp.length]);
+    const stateGroup = new THREE.Group();
+    for (const d of s.districts) {
+      const shapes = d.rings.map((ring) => {
+        const pts = ring.map(project);
+        const sh = new THREE.Shape();
+        pts.forEach(([x, y], k) => (k ? sh.lineTo(x, y) : sh.moveTo(x, y)));
+        return sh;
+      });
+      const geom = new THREE.ExtrudeGeometry(shapes, { depth: 3.4, bevelEnabled: false });
+      geom.rotateX(-Math.PI / 2);
+      const mesh = new THREE.Mesh(
+        geom,
+        new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.04, side: THREE.DoubleSide })
+      );
+      mesh.userData.isState = true;
+      mesh.userData.stateSlug = s.slug;
+      mesh.name = s.name;
+      stateGroup.add(mesh);
+    }
+    group.add(stateGroup);
+    states.push({ slug: s.slug, name: s.name, group: stateGroup });
+  });
+
+  group.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(group);
+  const center = box.getCenter(new THREE.Vector3());
+
+  // Nearly top-down — this is meant to read as a clickable map, not a hero
+  // shot, so a strong oblique angle just wastes frame on foreshortening.
+  const worldUp = new THREE.Vector3(0, 1, 0);
+  // Empirically +Z, not the -Z the rest of this lib nominally calls "north":
+  // shape-space y grows southward (SVG-like) and ExtrudeGeometry's
+  // rotateX(-90°) sends shape-y -> world -z, so a small (northerly) y lands
+  // on a *positive* world z. Verified against real states' lat/lon below —
+  // don't "fix" this back to (0,0,-1) without re-checking that.
+  const north = new THREE.Vector3(0, 0, 1);
+  const dir = new THREE.Vector3().addScaledVector(north, -0.72).addScaledVector(worldUp, 0.68).normalize();
+  // Looking nearly straight down means `dir` is nearly parallel to world-up —
+  // using world-up as the camera's up vector there is degenerate (forward ≈
+  // up), which spins the view onto an arbitrary axis. North isn't parallel
+  // to a mostly-vertical `dir`, so it orients the map the way a map should
+  // read: north at the top of the screen.
+  const up = north.clone();
+  const fov = 36;
+  const aspect = stage.clientWidth / stage.clientHeight;
+  const dist = fitBox(box, center, dir, up, fov, aspect, 1.08);
+
+  overview = {
+    group,
+    states,
+    pose: {
+      position: center.clone().addScaledVector(dir, dist),
+      target: center.clone(),
+      up: up.clone(),
+      fov,
+      zoom: 1,
+      clip: null,
+      explode: 0,
+    },
+  };
+
+  scene.add(group);
+}
+
+/** Only for the very first paint, before any camera pose exists to swish from. */
+function snapCameraToOverview() {
+  camera.position.copy(overview.pose.position);
+  camera.up.copy(overview.pose.up);
+  camera.fov = overview.pose.fov;
+  camera.lookAt(overview.pose.target);
+  camera.updateProjectionMatrix();
+}
+
+/** Swish back out to the national picker, then drop the current state. */
+async function goToIndia() {
+  if (tier === 'india' || !mvc) return;
+  hardCollapseSplit();
+  // A deep link (e.g. #kerala) opens straight into a state and never builds
+  // the overview — do it now, first time "India" is actually clicked.
+  if (!overview) {
+    flashStatus('assembling the national map…', 8000);
+    await buildOverview();
+  }
+  scene.add(overview.group);
+  mvc.registerView({ id: 'india', compute: () => overview.pose });
+  await mvc.setView('india');
+
+  mvc.destroy();
+  mvc = null;
+  scene.remove(current.group);
+  current.dispose();
+  current = null;
+  activeSlug = null;
+  currentData = null;
+  tier = 'india';
+  view = null;
+  paintMeta();
+  paintCrumbs();
+  renderList();
+}
+
+function paintCrumbs() {
+  const crumbsEl = document.getElementById('crumbs');
+  const parts = [];
+  parts.push(tier === 'india' ? `<span class="current">India</span>` : `<button data-crumb="india">India</button>`);
+  if (tier !== 'india') {
+    const name = registry.states.find((s) => s.slug === activeSlug)?.name || '';
+    parts.push('<span class="sep">/</span>');
+    parts.push(tier === 'state' ? `<span class="current">${name}</span>` : `<button data-crumb="state">${name}</button>`);
+  }
+  if (tier === 'district' && split) {
+    parts.push('<span class="sep">/</span>', `<span class="current">${split.name}</span>`);
+  }
+  crumbsEl.innerHTML = parts.join('');
+}
+
+document.getElementById('crumbs').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-crumb]');
+  if (!btn) return;
+  if (btn.dataset.crumb === 'india') goToIndia();
+  else if (btn.dataset.crumb === 'state') collapseSplit();
+});
+
+/* ------------------------------------------------------------------ *
+ * Click a district: camera swishes in to frame it, and its sub-districts
+ * take its place. Click a sub-district (or empty space) to swish back out.
+ *
+ * Sub-district paths were projected through the exact same viewBox as their
+ * parent district (see tools/build-state-data.mjs), so they drop in flush —
+ * no re-fitting needed. The sub-group is a *sibling* of the district mesh
+ * (not a child of it) because Three.js skips a whole subtree's render when
+ * the parent's own `visible` is false — parenting onto the hidden district
+ * mesh would silently hide the sub-districts too. The tick loop below keeps
+ * the sub-group pinned to the district mesh's position every frame instead,
+ * which also keeps it correct mid-explode.
+ * ------------------------------------------------------------------ */
+let flashTimer = null;
+function flashStatus(msg, ms = 2200) {
+  statusEl.hidden = false;
+  statusEl.textContent = msg;
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => { statusEl.hidden = true; }, ms);
+}
+
+function focusView(box) {
+  return {
+    id: 'focus',
+    compute(ctx) {
+      const center = box.getCenter(new THREE.Vector3());
+      const dir = new THREE.Vector3()
+        .addScaledVector(ctx.frame.east, Math.SQRT1_2 * 0.82)
+        .addScaledVector(ctx.frame.north, -Math.SQRT1_2 * 0.82)
+        .addScaledVector(ctx.frame.up, 0.62)
+        .normalize();
+      const fov = 40;
+      const d = fitBox(box, center, dir, ctx.frame.up, fov, ctx.aspect, 1.35);
+      return {
+        position: center.clone().addScaledVector(dir, d),
+        target: center.clone(),
+        up: ctx.frame.up.clone(),
+        fov,
+        zoom: 1,
+        clip: null,
+        explode: 0,
+      };
+    },
+  };
+}
+
+function teardownSplit(s) {
+  current.group.remove(s.subGroup);
+  for (const { mesh } of s.pieces) {
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+  }
+  s.mesh.visible = true;
+}
+
+/** Swish the camera back to the state view, then remove the sub-group. */
+function collapseSplit() {
+  if (!split) return;
+  const s = split;
+  split = null;
+  mvc.setView(s.beforeView || 'isometric').then(() => {
+    teardownSplit(s);
+    tier = 'state';
+    paintCrumbs();
+    paintMeta();
+  });
+}
+
+/** Same teardown, but instant — used only when jumping straight to a different district. */
+function hardCollapseSplit() {
+  if (!split) return;
+  teardownSplit(split);
+  split = null;
+}
+
+function splitDistrict(mesh, name) {
+  const entry = currentData?.districts.find((d) => d.name === name);
+  if (!entry?.subdistricts?.length) {
+    flashStatus(`${name} — no sub-district boundaries in this snapshot`);
+    return;
+  }
+  const beforeView = split ? split.beforeView : mvc.getView();
+  hardCollapseSplit();
+
+  const [vw, vh] = currentData.viewBox;
+  const { group: subGroup, pieces } = buildPieces(entry.subdistricts, { vw, vh, ...SHAPE_OPTS, ramp: palette.ramp });
+  for (const p of pieces) p.mesh.userData.isSubdistrict = true;
+  subGroup.position.copy(mesh.position);
+  current.group.add(subGroup);
+  mesh.visible = false;
+
+  split = { name, mesh, subGroup, pieces, beforeView };
+
+  subGroup.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(subGroup);
+  mvc.registerView(focusView(box));
+  mvc.setView('focus');
+  tier = 'district';
+  paintCrumbs();
+  flashStatus(`${name} — ${pieces.length} sub-districts`);
+}
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let pointerDownAt = null;
+
+function pick(clientX, clientY) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+
+  if (tier === 'india') {
+    if (!overview) return;
+    const hits = raycaster.intersectObject(overview.group, true);
+    const slug = hits.find((h) => h.object.isMesh)?.object.userData.stateSlug;
+    if (slug) loadState(slug, { fromOverview: true });
+    return;
+  }
+
+  const hits = current ? raycaster.intersectObject(current.group, true) : [];
+  const hit = hits.find((h) => h.object.isMesh && h.object.visible);
+
+  if (!hit) { collapseSplit(); return; }
+  const obj = hit.object;
+  if (obj.userData.isSubdistrict) { collapseSplit(); return; }
+  if (obj.userData.isDistrict && !(split && split.mesh === obj)) splitDistrict(obj, obj.name);
+}
+
+renderer.domElement.addEventListener('pointerdown', (e) => { pointerDownAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!pointerDownAt) return;
+  const [dx, dy] = pointerDownAt;
+  pointerDownAt = null;
+  // A few px of slop distinguishes a click from a drag, if this scene ever
+  // grows orbit controls.
+  if (Math.hypot(e.clientX - dx, e.clientY - dy) < 4) pick(e.clientX, e.clientY);
+});
+
+/** Cursor + a faint lift on whichever state (India tier) is under the pointer. */
+let hoveredSlug = null;
+function setHoveredState(slug) {
+  if (hoveredSlug === slug) return;
+  const paint = (s, lit) => s?.group.children.forEach((m) => m.material.emissive.setScalar(lit ? 0.16 : 0));
+  paint(overview?.states.find((s) => s.slug === hoveredSlug), false);
+  hoveredSlug = slug;
+  paint(overview?.states.find((s) => s.slug === slug), true);
+  renderer.domElement.style.cursor = slug ? 'pointer' : 'default';
+}
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (tier !== 'india' || !overview) {
+    if (hoveredSlug) setHoveredState(null);
+    return;
+  }
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObject(overview.group, true).find((h) => h.object.isMesh);
+  setHoveredState(hit?.object.userData.stateSlug || null);
+});
+renderer.domElement.addEventListener('pointerleave', () => setHoveredState(null));
 
 function renderList(filter = '') {
   const q = filter.trim().toLowerCase();
@@ -226,15 +1071,19 @@ function renderList(filter = '') {
         <span>${s.name}</span><i>${s.districtCount}</i></button>`
     )
     .join('');
+  // Whatever's selected stays visible in the list, centred, even if it was
+  // scrolled off — e.g. after picking a state straight off the 3D map.
+  listEl.querySelector('button[aria-current="true"]')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
-async function loadState(slug) {
+async function loadState(slug, { fromOverview = false } = {}) {
   const entry = registry.states.find((s) => s.slug === slug);
   if (!entry) return;
 
   const token = ++loadToken;
   statusEl.hidden = false;
   statusEl.textContent = `loading ${entry.name}…`;
+  if (!revealed) setProgress(60, `fetching ${entry.name}…`);
 
   if (!cache.has(slug)) cache.set(slug, await loadStateData(slug));
   // A newer click landed while this state was in flight — drop this one.
@@ -248,45 +1097,70 @@ async function loadState(slug) {
     scene.remove(current.group);
     current.dispose();
   }
+  hardCollapseSplit(); // dispose any open split's geometry before the group it lives in goes away
+  currentData = data;
 
-  const built = buildStateMap(data, { span: 240, ramp: palette.ramp });
+  const built = buildStateMap(data, { ...SHAPE_OPTS, ramp: palette.ramp });
+  for (const d of built.districts) d.mesh.userData.isDistrict = true;
   scene.add(built.group);
   current = built;
 
   // Districts get further apart as their count rises; scale the spread down so
-  // dense states (UP's 71) stay legible and sparse ones still separate.
+  // dense states (UP's 75) stay legible and sparse ones still separate.
   const n = built.districts.length;
   built.stateConfig.explode = { factor: THREE.MathUtils.clamp(1.6 / Math.sqrt(n), 0.18, 0.6) };
   built.stateConfig.firstPerson = { eyeHeight: 14 };
 
-  const keepView = mvc ? mvc.getView() : null;
+  // 'focus' is registered ad hoc per split and never exists on a fresh
+  // MapViewController — carrying it over as initialView would silently fail.
+  const prevView = mvc?.getView();
+  const keepView = VIEWS.some((v) => v.id === prevView) ? prevView : null;
   mvc = new MapViewController(scene, camera, built.stateConfig, {
     renderer,
     theme: palette.theme,
     duration: 750,
-    initialView: keepView || 'isometric',
+    views: VIEWS,
+    // Coming from the India overview: skip the automatic immediate snap so
+    // the camera tweens FROM wherever the overview left it — the camera
+    // hasn't moved yet, so `setView` below animates from that exact pose.
+    initialView: fromOverview ? null : keepView || 'isometric',
     onViewChange: (id) => { view = id; paintMeta(); },
   });
   window.mvc = mvc;
 
   activeSlug = slug;
+  tier = 'state';
+
+  if (fromOverview) {
+    await mvc.setView(keepView || 'isometric');
+    scene.remove(overview.group); // the flat national map has served its purpose
+  }
+
   view = mvc.getView();
   paintMeta();
+  paintCrumbs();
   renderList(document.getElementById('filter').value);
   statusEl.hidden = true;
+  if (!revealed) setProgress(100, 'ready');
 }
 
 let view = 'isometric';
 function paintMeta() {
+  if (tier === 'india') {
+    metaEl.innerHTML = `${registry.stateCount} states/UTs · click one to explore`;
+    return;
+  }
+  if (tier === 'district' && split) {
+    metaEl.innerHTML = `${split.pieces.length} sub-districts of <b>${split.name}</b>`;
+    return;
+  }
   const entry = registry.states.find((s) => s.slug === activeSlug);
-  metaEl.innerHTML = entry
-    ? `${entry.districtCount} districts · view <b>${view}</b>`
-    : `${registry.stateCount} states · ${registry.districtCount} districts`;
+  metaEl.innerHTML = entry ? `${entry.districtCount} districts · view <b>${view}</b>` : '';
 }
 
 listEl.addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-slug]');
-  if (btn) loadState(btn.dataset.slug);
+  if (btn) loadState(btn.dataset.slug, { fromOverview: tier === 'india' });
 });
 document.getElementById('filter').addEventListener('input', (e) => renderList(e.target.value));
 
@@ -306,14 +1180,27 @@ addEventListener('resize', () => {
 
 (function tick() {
   requestAnimationFrame(tick);
+  if (split) split.subGroup.position.copy(split.mesh.position);
   renderer.render(scene, camera);
 })();
 
 renderList();
 applyPalette(palette);
-// Deep link: /examples/india/#kerala
+// Deep link: /examples/india/#kerala skips the overview and opens straight
+// into that state; otherwise land on the national picker.
 const initial = location.hash.slice(1);
-await loadState(registry.states.some((s) => s.slug === initial) ? initial : 'bihar');
+if (registry.states.some((s) => s.slug === initial)) {
+  await loadState(initial);
+} else {
+  await buildOverview();
+  snapCameraToOverview();
+  tier = 'india';
+  paintMeta();
+  paintCrumbs();
+  statusEl.hidden = true;
+  if (!revealed) setProgress(100, 'ready');
+}
+revealWhenReady();
 </script>
 </body>
 </html>

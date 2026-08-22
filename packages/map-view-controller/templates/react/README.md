@@ -15,5 +15,5 @@ cleanup. See `App.jsx`.
 Already have a Three.js scene? Skip `createStateMap` and use `buildStateMap` +
 `MapViewController` against your own objects, or the `__PKG__/react` wrapper.
 
-Boundaries are Census 2011 (via DataMeet): Telangana and Ladakh are absent from
-that vintage, and district counts predate later reorganisations.
+Boundaries are bharatlas.com's 2024 LGD snapshot: 785 districts across all 36
+states/UTs, including Telangana and Ladakh.

@@ -22,6 +22,8 @@ export interface DistrictData {
   centroid: [number, number];
   /** Number of `M…Z` subpaths — > 1 means the district has islands. */
   parts: number;
+  /** Tehsils/taluks/mandals within this district, in the same pixel space. Absent if the source had none. */
+  subdistricts?: DistrictData[];
 }
 
 export interface StateData {
@@ -33,6 +35,7 @@ export interface StateData {
   /** Geographic bounds, [minLon, minLat, maxLon, maxLat]. */
   bbox: [number, number, number, number];
   districtCount: number;
+  subDistrictCount: number;
   districts: DistrictData[];
 }
 
@@ -235,6 +238,25 @@ export declare function buildStateMap(
   data: StateData,
   opts?: BuildStateMapOptions
 ): BuiltStateMap;
+
+export interface BuildPiecesOptions extends BuildStateMapOptions {
+  /** The parent state's viewBox width — shares its projection with sibling pieces. */
+  vw: number;
+  /** The parent state's viewBox height. */
+  vh: number;
+}
+
+/**
+ * The shared extrusion core behind `buildStateMap`. Exposed so a single
+ * piece (e.g. one district) can be re-split into its own children — pass
+ * that district's `subdistricts` with the parent state's `viewBox` as
+ * `vw`/`vh` and they land in the exact same world space as the district
+ * they replace.
+ */
+export declare function buildPieces(
+  items: Array<{ name: string; path: string }>,
+  opts: BuildPiecesOptions
+): { group: Group; pieces: Array<{ name: string; mesh: Mesh; t: number }> };
 
 export declare function parsePath(d: string): Array<Array<[number, number]>>;
 export declare function ringArea(pts: Array<[number, number]>): number;

@@ -2,7 +2,7 @@
 export { createStateMap, default } from './createStateMap.js';
 
 // Mid-level: build meshes / drive the camera against your own Three.js scene.
-export { buildStateMap, parsePath, ringArea } from './state-map.js';
+export { buildStateMap, buildPieces, parsePath, ringArea } from './state-map.js';
 export { MapViewController } from './MapViewController.js';
 
 // Colour.

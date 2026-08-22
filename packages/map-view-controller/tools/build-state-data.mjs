@@ -2,7 +2,10 @@
 /**
  * Build per-state district geometry for every Indian state and UT.
  *
- * Source: DataMeet `maps` — Census 2011 district boundaries.
+ * Source: bharatlas.com LGD district snapshot — Local Government Directory,
+ * 2024, 785 districts across 36 states/UTs (includes Telangana and Ladakh).
+ * Falls back to reading DataMeet's older Census-2011 schema too, so an older
+ * --src still works.
  * Output: data/states/<slug>.js — one ES module per state, plus data/states/index.js
  *
  * ES modules rather than JSON so consumers can `import` a state in any
@@ -23,7 +26,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SRC_DEFAULT =
-  'https://raw.githubusercontent.com/datameet/maps/master/docs/data/geojson/dists11.geojson';
+  'https://pub-0429b8e3b5a946e69ea007df844a6f1c.r2.dev/admin/districts/LGD_Districts.geojson';
+const SUBSRC_DEFAULT =
+  'https://pub-0429b8e3b5a946e69ea007df844a6f1c.r2.dev/admin/subdistricts/LGD_Subdistricts.geojson';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = path.join(ROOT, 'data', 'states');
@@ -32,16 +37,43 @@ const OUT_DIR = path.join(ROOT, 'data', 'states');
 const VIEW_W = 1000;
 
 /**
- * Census 2011 spells some states differently from current usage, and a few
- * UTs have since been renamed or merged. Normalise the display name only —
- * the underlying boundaries are left exactly as published.
+ * The LGD source spells state/UT names in caps and merges some UTs
+ * differently from current usage. Normalise the display name only — the
+ * underlying boundaries are left exactly as published.
  */
 const NAME_FIXES = {
+  // Keys are post-titleCase (readNames title-cases the LGD source before
+  // this lookup runs).
+  'Andaman & Nicobar': 'Andaman & Nicobar Islands',
+  'Dadra,Nagar Haveli,Daman & Diu': 'Dadra & Nagar Haveli and Daman & Diu',
+  'NCT of Delhi': 'Delhi',
+  // Older Census-2011 (DataMeet) schema, kept so --src can still point at it.
   'Andaman & Nicobar Island': 'Andaman & Nicobar Islands',
   'Arunanchal Pradesh': 'Arunachal Pradesh',
   'Dadara & Nagar Havelli': 'Dadra & Nagar Haveli',
-  'NCT of Delhi': 'Delhi',
 };
+
+const titleCase = (s) =>
+  s
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/\bOf\b/g, 'of');
+
+/** Read a district feature's state/district names across known source schemas. */
+function readNames(props) {
+  if (props.stname != null) return { state: titleCase(props.stname), district: props.dtname };
+  return { state: props.ST_NM, district: props.DISTRICT };
+}
+
+/** LGD join code for a district feature, or null on schemas that don't have one. */
+function readDistLgd(props) {
+  return props.dist_lgd ?? null;
+}
+
+/** A sub-district feature's own name and its parent district's LGD code. */
+function readSubdistrict(props) {
+  return { name: titleCase(props.sdtname), distLgd: props.dist_lgd ?? null };
+}
 
 const slugify = (s) =>
   s
@@ -114,6 +146,43 @@ function outerRings(geom) {
   return [];
 }
 
+/**
+ * Project, simplify and pack one feature's geometry into the shared
+ * `{ name, path, centroid, parts }` shape used for both districts and
+ * sub-districts.
+ */
+function buildShape(name, geometry, project, tolerance) {
+  const rings = outerRings(geometry)
+    .map((ring) => {
+      const pts = ring.map(project);
+      if (pts.length > 1 && pts[0][0] === pts.at(-1)[0] && pts[0][1] === pts.at(-1)[1]) {
+        pts.pop();
+      }
+      return simplify(pts, tolerance);
+    })
+    // A simplified sliver can collapse below 3 points, or to ~zero area.
+    .filter((pts) => pts.length >= 3 && ringArea(pts) > 0.5)
+    .sort((a, b) => ringArea(b) - ringArea(a));
+
+  if (!rings.length) return null;
+
+  const d = rings
+    .map((pts) => 'M' + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join('L') + 'Z')
+    .join('');
+
+  // Centroid of the largest ring — the label anchor, not the bbox centre.
+  const main = rings[0];
+  const cx = main.reduce((s, p) => s + p[0], 0) / main.length;
+  const cy = main.reduce((s, p) => s + p[1], 0) / main.length;
+
+  return {
+    name,
+    path: d,
+    centroid: [+cx.toFixed(1), +cy.toFixed(1)],
+    parts: rings.length,
+  };
+}
+
 /* ------------------------------------------------------------------ *
  * Build
  * ------------------------------------------------------------------ */
@@ -135,14 +204,33 @@ async function main() {
     return i >= 0 ? args[i + 1] : dflt;
   };
   const src = arg('--src', SRC_DEFAULT);
+  const subsrc = args.includes('--no-subdistricts') ? null : arg('--subsrc', SUBSRC_DEFAULT);
   const tolerance = Number(arg('--tolerance', '0.55'));
+  const subTolerance = Number(arg('--sub-tolerance', String(tolerance)));
 
   const geo = await loadSource(src);
+  const SOURCE_LABEL =
+    geo.features[0]?.properties.stname != null
+      ? 'bharatlas.com — LGD district snapshot, 2024'
+      : 'DataMeet maps — Census 2011 district boundaries';
+
+  // Sub-districts, grouped by their parent district's LGD code. Only the new
+  // LGD source carries that code, so an old-schema --src just gets none.
+  const subByDistLgd = new Map();
+  if (subsrc) {
+    const subGeo = await loadSource(subsrc);
+    for (const f of subGeo.features) {
+      const { name, distLgd } = readSubdistrict(f.properties);
+      if (distLgd == null || !name) continue;
+      if (!subByDistLgd.has(distLgd)) subByDistLgd.set(distLgd, []);
+      subByDistLgd.get(distLgd).push(f);
+    }
+  }
 
   // Group districts by state.
   const byState = new Map();
   for (const f of geo.features) {
-    const raw = f.properties.ST_NM;
+    const { state: raw } = readNames(f.properties);
     if (!raw) continue;
     const state = NAME_FIXES[raw] || raw;
     if (!byState.has(state)) byState.set(state, []);
@@ -184,52 +272,42 @@ async function main() {
     ];
 
     const districts = [];
+    let subDistrictCount = 0;
     for (const f of features.sort((a, b) =>
-      a.properties.DISTRICT.localeCompare(b.properties.DISTRICT)
+      readNames(a.properties).district.localeCompare(readNames(b.properties).district)
     )) {
-      const rings = outerRings(f.geometry)
-        .map((ring) => {
-          const pts = ring.map(project);
-          // Ring is closed in the source; drop the repeat before simplifying.
-          if (pts.length > 1 && pts[0][0] === pts.at(-1)[0] && pts[0][1] === pts.at(-1)[1]) {
-            pts.pop();
-          }
-          return simplify(pts, tolerance);
-        })
-        // A simplified sliver can collapse below 3 points, or to ~zero area.
-        .filter((pts) => pts.length >= 3 && ringArea(pts) > 0.5)
-        .sort((a, b) => ringArea(b) - ringArea(a));
-
-      if (!rings.length) {
-        process.stderr.write(`  ! dropped ${stateName} / ${f.properties.DISTRICT} (no ring survived)\n`);
+      const { district: districtName } = readNames(f.properties);
+      const shape = buildShape(districtName, f.geometry, project, tolerance);
+      if (!shape) {
+        process.stderr.write(`  ! dropped ${stateName} / ${districtName} (no ring survived)\n`);
         continue;
       }
 
-      const d = rings
-        .map((pts) => 'M' + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join('L') + 'Z')
-        .join('');
+      const distLgd = readDistLgd(f.properties);
+      const subFeatures = distLgd != null ? subByDistLgd.get(distLgd) : null;
+      if (subFeatures?.length) {
+        const subdistricts = subFeatures
+          .map((sf) => buildShape(readSubdistrict(sf.properties).name, sf.geometry, project, subTolerance))
+          .filter(Boolean)
+          .sort((a, b) => a.name.localeCompare(b.name));
+        if (subdistricts.length) {
+          shape.subdistricts = subdistricts;
+          subDistrictCount += subdistricts.length;
+        }
+      }
 
-      // Centroid of the largest ring — the label anchor, not the bbox centre.
-      const main = rings[0];
-      const cx = main.reduce((s, p) => s + p[0], 0) / main.length;
-      const cy = main.reduce((s, p) => s + p[1], 0) / main.length;
-
-      districts.push({
-        name: f.properties.DISTRICT,
-        path: d,
-        centroid: [+cx.toFixed(1), +cy.toFixed(1)],
-        parts: rings.length,
-      });
+      districts.push(shape);
     }
 
     const slug = slugify(stateName);
     const doc = {
       name: stateName,
       slug,
-      source: 'DataMeet maps — Census 2011 district boundaries',
+      source: SOURCE_LABEL,
       viewBox: [VIEW_W, viewH],
       bbox: [minLon, minLat, maxLon, maxLat].map((v) => +v.toFixed(5)),
       districtCount: districts.length,
+      subDistrictCount,
       districts,
     };
 
@@ -240,9 +318,16 @@ async function main() {
     );
     const bytes = (await fs.stat(path.join(OUT_DIR, file))).size;
 
-    index.push({ name: stateName, slug, file, districtCount: districts.length, viewBox: doc.viewBox });
+    index.push({
+      name: stateName,
+      slug,
+      file,
+      districtCount: districts.length,
+      subDistrictCount,
+      viewBox: doc.viewBox,
+    });
     process.stderr.write(
-      `  ${stateName.padEnd(28)} ${String(districts.length).padStart(3)} districts  ${String(Math.round(bytes / 1024)).padStart(4)} KB\n`
+      `  ${stateName.padEnd(28)} ${String(districts.length).padStart(3)} districts  ${String(subDistrictCount).padStart(4)} sub-districts  ${String(Math.round(bytes / 1024)).padStart(5)} KB\n`
     );
   }
 
@@ -253,9 +338,10 @@ async function main() {
 /** Every Indian state and UT in this data pack, alphabetical. */
 export const STATES = ${JSON.stringify(index, null, 2)};
 
-export const SOURCE = ${JSON.stringify('DataMeet maps — Census 2011 district boundaries')};
+export const SOURCE = ${JSON.stringify(SOURCE_LABEL)};
 export const STATE_COUNT = ${index.length};
 export const DISTRICT_COUNT = ${index.reduce((s, e) => s + e.districtCount, 0)};
+export const SUB_DISTRICT_COUNT = ${index.reduce((s, e) => s + e.subDistrictCount, 0)};
 
 /** slug -> () => Promise<{ default: StateData }> */
 export const loaders = {
@@ -283,7 +369,7 @@ export async function loadStateData(slug) {
   await fs.writeFile(path.join(OUT_DIR, 'index.js'), registry);
 
   process.stderr.write(
-    `\n${index.length} states/UTs, ${index.reduce((s, e) => s + e.districtCount, 0)} districts -> ${path.relative(process.cwd(), OUT_DIR)}\n`
+    `\n${index.length} states/UTs, ${index.reduce((s, e) => s + e.districtCount, 0)} districts, ${index.reduce((s, e) => s + e.subDistrictCount, 0)} sub-districts -> ${path.relative(process.cwd(), OUT_DIR)}\n`
   );
 }
 

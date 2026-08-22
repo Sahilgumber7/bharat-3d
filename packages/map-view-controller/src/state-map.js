@@ -34,25 +34,28 @@ export function ringArea(pts) {
 }
 
 /**
- * @param {object} data  a parsed state JSON document
- * @param {object} [opts]
- *   @param {number} [opts.span=240]       world size of the state's longest axis
- *   @param {number} [opts.thickness=4.5]  base extrusion depth — keep this small
- *                                         relative to `span` or districts read as
- *                                         chunky blocks instead of flat pieces
- *   @param {number} [opts.relief=0.35]    0 = every piece identical thickness,
- *                                         1 = ±100% swing by district area
- *   @param {number} [opts.gap=0.01]       fraction each piece shrinks toward its
- *                                         own centre, cutting a visible seam
- *                                         between neighbours. 0 = flush.
- *   @param {string[]} [opts.ramp]      sequential ramp, light->dark; districts are
- *                                      quantised onto it by area
- * @returns {{ group, districts, stateConfig, recolor, dispose }}
+ * Extrude a flat list of named SVG-path pieces into meshes, all projected
+ * through the same `vw`/`vh` -> `span` transform. This is the shared core of
+ * `buildStateMap` (pieces = a state's districts) and is exported separately
+ * so a piece can be re-split into its own children later — a district's
+ * `subdistricts` project into the exact same per-state pixel space as their
+ * parent, so calling this again with just that one district's subdistrict
+ * list drops in flush, no re-projection needed.
+ *
+ * @param {Array<{name: string, path: string}>} items
+ * @param {object} opts
+ *   @param {number} opts.vw  parent state's viewBox width (for the shared projection)
+ *   @param {number} opts.vh  parent state's viewBox height
+ *   @param {number} [opts.span=240]
+ *   @param {number} [opts.thickness=4.5]
+ *   @param {number} [opts.relief=0.35]
+ *   @param {number} [opts.gap=0.01]
+ *   @param {string[]} [opts.ramp]
+ * @returns {{ group: THREE.Group, pieces: Array<{name, mesh, t}> }}
  */
-export function buildStateMap(data, opts = {}) {
-  const { span = 240, thickness = 4.5, relief = 0.35, gap = 0.01 } = opts;
+export function buildPieces(items, opts = {}) {
+  const { vw, vh, span = 240, thickness = 4.5, relief = 0.35, gap = 0.01 } = opts;
   const ramp = opts.ramp || PALETTES[0].ramp;
-  const [vw, vh] = data.viewBox;
 
   // Source space is SVG-like: x east, y *south*. Map to a Y-up world with the
   // state centred on the origin — y stays as z, so north lands on -z, which is
@@ -60,12 +63,12 @@ export function buildStateMap(data, opts = {}) {
   const scale = span / Math.max(vw, vh);
   const toWorld = ([x, y]) => [(x - vw / 2) * scale, (y - vh / 2) * scale];
 
-  const parsed = data.districts.map((d) => {
+  const parsed = items.map((d) => {
     let rings = parsePath(d.path).map((r) => r.map(toWorld));
 
-    // Shrink each district very slightly toward its own centre so neighbours
+    // Shrink each piece very slightly toward its own centre so neighbours
     // don't share an edge. Scaling about the centroid rather than true polygon
-    // offsetting keeps this robust on concave and multi-part districts — the
+    // offsetting keeps this robust on concave and multi-part shapes — the
     // seam width varies a little, which at these gaps reads as a hand-cut
     // jigsaw rather than an error.
     if (gap > 0) {
@@ -81,17 +84,17 @@ export function buildStateMap(data, opts = {}) {
   const maxArea = Math.max(...parsed.map((d) => d.area), 1);
 
   const group = new THREE.Group();
-  const districts = [];
+  const pieces = [];
 
-  parsed.forEach((d, i) => {
+  parsed.forEach((d) => {
     // Thickness stays close to `thickness` for every piece — `relief` only
     // nudges it by area, so the map reads as a set of tiles rather than a bar
-    // chart. sqrt compresses the range so one huge district doesn't dominate.
+    // chart. sqrt compresses the range so one huge piece doesn't dominate.
     // `t` drives both thickness and fill, so relief and colour agree.
     const t = Math.sqrt(d.area / maxArea);
     const depth = thickness * (1 + relief * (t - 0.5) * 2);
 
-    // A district with islands (Andaman, Lakshadweep, coastal Gujarat) becomes
+    // A piece with islands (Andaman, Lakshadweep, coastal Gujarat) becomes
     // several shapes in one geometry rather than several meshes, so it explodes
     // and clips as a single unit.
     const shapes = d.rings.map((ring) => {
@@ -115,8 +118,32 @@ export function buildStateMap(data, opts = {}) {
     mesh.name = d.name;
     mesh.userData.t = t;   // kept so recolor() can re-step without rebuilding
     group.add(mesh);
-    districts.push({ name: d.name, mesh, t });
+    pieces.push({ name: d.name, mesh, t });
   });
+
+  return { group, pieces };
+}
+
+/**
+ * @param {object} data  a parsed state JSON document
+ * @param {object} [opts]
+ *   @param {number} [opts.span=240]       world size of the state's longest axis
+ *   @param {number} [opts.thickness=4.5]  base extrusion depth — keep this small
+ *                                         relative to `span` or districts read as
+ *                                         chunky blocks instead of flat pieces
+ *   @param {number} [opts.relief=0.35]    0 = every piece identical thickness,
+ *                                         1 = ±100% swing by district area
+ *   @param {number} [opts.gap=0.01]       fraction each piece shrinks toward its
+ *                                         own centre, cutting a visible seam
+ *                                         between neighbours. 0 = flush.
+ *   @param {string[]} [opts.ramp]      sequential ramp, light->dark; districts are
+ *                                      quantised onto it by area
+ * @returns {{ group, districts, stateConfig, recolor, dispose }}
+ */
+export function buildStateMap(data, opts = {}) {
+  const [vw, vh] = data.viewBox;
+  const { group, pieces } = buildPieces(data.districts, { ...opts, vw, vh });
+  const districts = pieces;
 
   const box = new THREE.Box3().setFromObject(group);
 

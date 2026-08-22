@@ -32,7 +32,7 @@ export const PALETTES = [
     ink: { primary: 'rgba(223,228,245,.92)', muted: 'rgba(223,228,245,.55)' },
     panel: 'rgba(14,21,53,.78)',
     theme: {
-      accent: '#E8A820',
+      accent: '#B24BFF',
       accentContrast: '#0E1535',
       surface: 'rgba(14,21,53,.72)',
       border: 'rgba(255,255,255,.14)',
@@ -54,7 +54,7 @@ export const PALETTES = [
     ink: { primary: '#0b0b0b', muted: '#52514e' },
     panel: 'rgba(252,252,251,.86)',
     theme: {
-      accent: '#2a78d6',
+      accent: '#6D28FF',
       accentContrast: '#ffffff',
       surface: 'rgba(252,252,251,.82)',
       border: 'rgba(11,11,11,.14)',
@@ -77,7 +77,7 @@ export const PALETTES = [
     ink: { primary: 'rgba(250,238,232,.92)', muted: 'rgba(250,238,232,.55)' },
     panel: 'rgba(26,18,16,.8)',
     theme: {
-      accent: '#fab219',
+      accent: '#C6FF3D',
       accentContrast: '#1a1210',
       surface: 'rgba(26,18,16,.74)',
       border: 'rgba(255,255,255,.14)',
@@ -99,7 +99,7 @@ export const PALETTES = [
     ink: { primary: 'rgba(228,245,240,.92)', muted: 'rgba(228,245,240,.55)' },
     panel: 'rgba(11,26,24,.8)',
     theme: {
-      accent: '#E8A820',
+      accent: '#FF3DAE',
       accentContrast: '#0b1a18',
       surface: 'rgba(11,26,24,.74)',
       border: 'rgba(255,255,255,.14)',

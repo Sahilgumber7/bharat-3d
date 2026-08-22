@@ -7,39 +7,43 @@ export const STATES = [
     "slug": "andaman-and-nicobar-islands",
     "file": "andaman-and-nicobar-islands.js",
     "districtCount": 3,
+    "subDistrictCount": 9,
     "viewBox": [
       1000,
-      3399.9
+      3396.9
     ]
   },
   {
     "name": "Andhra Pradesh",
     "slug": "andhra-pradesh",
     "file": "andhra-pradesh.js",
-    "districtCount": 23,
+    "districtCount": 26,
+    "subDistrictCount": 671,
     "viewBox": [
       1000,
-      948.9
+      850.3
     ]
   },
   {
     "name": "Arunachal Pradesh",
     "slug": "arunachal-pradesh",
     "file": "arunachal-pradesh.js",
-    "districtCount": 16,
+    "districtCount": 26,
+    "subDistrictCount": 185,
     "viewBox": [
       1000,
-      543.2
+      544.4
     ]
   },
   {
     "name": "Assam",
     "slug": "assam",
     "file": "assam.js",
-    "districtCount": 27,
+    "districtCount": 35,
+    "subDistrictCount": 172,
     "viewBox": [
       1000,
-      676.1
+      675.6
     ]
   },
   {
@@ -47,9 +51,10 @@ export const STATES = [
     "slug": "bihar",
     "file": "bihar.js",
     "districtCount": 38,
+    "subDistrictCount": 533,
     "viewBox": [
       1000,
-      728.1
+      723.2
     ]
   },
   {
@@ -57,49 +62,43 @@ export const STATES = [
     "slug": "chandigarh",
     "file": "chandigarh.js",
     "districtCount": 1,
+    "subDistrictCount": 1,
     "viewBox": [
       1000,
-      1036.8
+      1039
     ]
   },
   {
     "name": "Chhattisgarh",
     "slug": "chhattisgarh",
     "file": "chhattisgarh.js",
-    "districtCount": 18,
+    "districtCount": 33,
+    "subDistrictCount": 164,
     "viewBox": [
       1000,
-      1629.7
+      1631.2
     ]
   },
   {
-    "name": "Dadra & Nagar Haveli",
-    "slug": "dadra-and-nagar-haveli",
-    "file": "dadra-and-nagar-haveli.js",
-    "districtCount": 1,
+    "name": "Dadra & Nagar Haveli and Daman & Diu",
+    "slug": "dadra-and-nagar-haveli-and-daman-and-diu",
+    "file": "dadra-and-nagar-haveli-and-daman-and-diu.js",
+    "districtCount": 3,
+    "subDistrictCount": 3,
     "viewBox": [
       1000,
-      1069.2
-    ]
-  },
-  {
-    "name": "Daman & Diu",
-    "slug": "daman-and-diu",
-    "file": "daman-and-diu.js",
-    "districtCount": 2,
-    "viewBox": [
-      1000,
-      212.3
+      329.3
     ]
   },
   {
     "name": "Delhi",
     "slug": "delhi",
     "file": "delhi.js",
-    "districtCount": 9,
+    "districtCount": 11,
+    "subDistrictCount": 34,
     "viewBox": [
       1000,
-      1074.3
+      1072.6
     ]
   },
   {
@@ -107,29 +106,32 @@ export const STATES = [
     "slug": "goa",
     "file": "goa.js",
     "districtCount": 2,
+    "subDistrictCount": 12,
     "viewBox": [
       1000,
-      1645.7
+      1419.3
     ]
   },
   {
     "name": "Gujarat",
     "slug": "gujarat",
     "file": "gujarat.js",
-    "districtCount": 26,
+    "districtCount": 33,
+    "subDistrictCount": 251,
     "viewBox": [
       1000,
-      788.9
+      788.8
     ]
   },
   {
     "name": "Haryana",
     "slug": "haryana",
     "file": "haryana.js",
-    "districtCount": 21,
+    "districtCount": 22,
+    "subDistrictCount": 82,
     "viewBox": [
       1000,
-      1199.9
+      1199.7
     ]
   },
   {
@@ -137,19 +139,21 @@ export const STATES = [
     "slug": "himachal-pradesh",
     "file": "himachal-pradesh.js",
     "districtCount": 12,
+    "subDistrictCount": 123,
     "viewBox": [
       1000,
-      989.9
+      992.4
     ]
   },
   {
     "name": "Jammu & Kashmir",
     "slug": "jammu-and-kashmir",
     "file": "jammu-and-kashmir.js",
-    "districtCount": 23,
+    "districtCount": 22,
+    "subDistrictCount": 80,
     "viewBox": [
       1000,
-      748.8
+      1014
     ]
   },
   {
@@ -157,19 +161,21 @@ export const STATES = [
     "slug": "jharkhand",
     "file": "jharkhand.js",
     "districtCount": 24,
+    "subDistrictCount": 270,
     "viewBox": [
       1000,
-      793.6
+      796.2
     ]
   },
   {
     "name": "Karnataka",
     "slug": "karnataka",
     "file": "karnataka.js",
-    "districtCount": 30,
+    "districtCount": 31,
+    "subDistrictCount": 234,
     "viewBox": [
       1000,
-      1573.3
+      1572.1
     ]
   },
   {
@@ -177,9 +183,21 @@ export const STATES = [
     "slug": "kerala",
     "file": "kerala.js",
     "districtCount": 14,
+    "subDistrictCount": 76,
     "viewBox": [
       1000,
-      1796.7
+      1797.5
+    ]
+  },
+  {
+    "name": "Ladakh",
+    "slug": "ladakh",
+    "file": "ladakh.js",
+    "districtCount": 2,
+    "subDistrictCount": 8,
+    "viewBox": [
+      1000,
+      738.2
     ]
   },
   {
@@ -187,69 +205,76 @@ export const STATES = [
     "slug": "lakshadweep",
     "file": "lakshadweep.js",
     "districtCount": 1,
+    "subDistrictCount": 10,
     "viewBox": [
       1000,
-      1760.8
+      2272.6
     ]
   },
   {
     "name": "Madhya Pradesh",
     "slug": "madhya-pradesh",
     "file": "madhya-pradesh.js",
-    "districtCount": 50,
+    "districtCount": 52,
+    "subDistrictCount": 416,
     "viewBox": [
       1000,
-      722
+      722.5
     ]
   },
   {
     "name": "Maharashtra",
     "slug": "maharashtra",
     "file": "maharashtra.js",
-    "districtCount": 35,
+    "districtCount": 36,
+    "subDistrictCount": 361,
     "viewBox": [
       1000,
-      821.8
+      822.1
     ]
   },
   {
     "name": "Manipur",
     "slug": "manipur",
     "file": "manipur.js",
-    "districtCount": 9,
+    "districtCount": 16,
+    "subDistrictCount": 39,
     "viewBox": [
       1000,
-      1149.9
+      1153.2
     ]
   },
   {
     "name": "Meghalaya",
     "slug": "meghalaya",
     "file": "meghalaya.js",
-    "districtCount": 7,
+    "districtCount": 12,
+    "subDistrictCount": 39,
     "viewBox": [
       1000,
-      403.7
+      405.6
     ]
   },
   {
     "name": "Mizoram",
     "slug": "mizoram",
     "file": "mizoram.js",
-    "districtCount": 8,
+    "districtCount": 11,
+    "subDistrictCount": 26,
     "viewBox": [
       1000,
-      2366.3
+      2380.7
     ]
   },
   {
     "name": "Nagaland",
     "slug": "nagaland",
     "file": "nagaland.js",
-    "districtCount": 11,
+    "districtCount": 16,
+    "subDistrictCount": 112,
     "viewBox": [
       1000,
-      1070.9
+      1068.4
     ]
   },
   {
@@ -257,9 +282,10 @@ export const STATES = [
     "slug": "odisha",
     "file": "odisha.js",
     "districtCount": 30,
+    "subDistrictCount": 476,
     "viewBox": [
       1000,
-      831
+      830.9
     ]
   },
   {
@@ -267,69 +293,87 @@ export const STATES = [
     "slug": "puducherry",
     "file": "puducherry.js",
     "districtCount": 4,
+    "subDistrictCount": 8,
     "viewBox": [
       1000,
-      900.9
+      901
     ]
   },
   {
     "name": "Punjab",
     "slug": "punjab",
     "file": "punjab.js",
-    "districtCount": 20,
+    "districtCount": 23,
+    "subDistrictCount": 79,
     "viewBox": [
       1000,
-      1157.2
+      1131.8
     ]
   },
   {
     "name": "Rajasthan",
     "slug": "rajasthan",
     "file": "rajasthan.js",
-    "districtCount": 33,
+    "districtCount": 50,
+    "subDistrictCount": 315,
     "viewBox": [
       1000,
-      908.5
+      908.9
     ]
   },
   {
     "name": "Sikkim",
     "slug": "sikkim",
     "file": "sikkim.js",
-    "districtCount": 4,
+    "districtCount": 6,
+    "subDistrictCount": 9,
     "viewBox": [
       1000,
-      1297.5
+      1305.8
     ]
   },
   {
     "name": "Tamil Nadu",
     "slug": "tamil-nadu",
     "file": "tamil-nadu.js",
-    "districtCount": 32,
+    "districtCount": 38,
+    "subDistrictCount": 300,
     "viewBox": [
       1000,
-      1357.7
+      1358
+    ]
+  },
+  {
+    "name": "Telangana",
+    "slug": "telangana",
+    "file": "telangana.js",
+    "districtCount": 33,
+    "subDistrictCount": 587,
+    "viewBox": [
+      1000,
+      1049.2
     ]
   },
   {
     "name": "Tripura",
     "slug": "tripura",
     "file": "tripura.js",
-    "districtCount": 4,
+    "districtCount": 8,
+    "subDistrictCount": 23,
     "viewBox": [
       1000,
-      1460.8
+      1471.6
     ]
   },
   {
     "name": "Uttar Pradesh",
     "slug": "uttar-pradesh",
     "file": "uttar-pradesh.js",
-    "districtCount": 71,
+    "districtCount": 75,
+    "subDistrictCount": 316,
     "viewBox": [
       1000,
-      973.7
+      972.7
     ]
   },
   {
@@ -337,26 +381,29 @@ export const STATES = [
     "slug": "uttarakhand",
     "file": "uttarakhand.js",
     "districtCount": 13,
+    "subDistrictCount": 80,
     "viewBox": [
       1000,
-      919.1
+      911.3
     ]
   },
   {
     "name": "West Bengal",
     "slug": "west-bengal",
     "file": "west-bengal.js",
-    "districtCount": 19,
+    "districtCount": 23,
+    "subDistrictCount": 368,
     "viewBox": [
       1000,
-      1540
+      1538.6
     ]
   }
 ];
 
-export const SOURCE = "DataMeet maps — Census 2011 district boundaries";
-export const STATE_COUNT = 35;
-export const DISTRICT_COUNT = 641;
+export const SOURCE = "bharatlas.com — LGD district snapshot, 2024";
+export const STATE_COUNT = 36;
+export const DISTRICT_COUNT = 785;
+export const SUB_DISTRICT_COUNT = 6472;
 
 /** slug -> () => Promise<{ default: StateData }> */
 export const loaders = {
@@ -367,8 +414,7 @@ export const loaders = {
   "bihar": () => import('./bihar.js'),
   "chandigarh": () => import('./chandigarh.js'),
   "chhattisgarh": () => import('./chhattisgarh.js'),
-  "dadra-and-nagar-haveli": () => import('./dadra-and-nagar-haveli.js'),
-  "daman-and-diu": () => import('./daman-and-diu.js'),
+  "dadra-and-nagar-haveli-and-daman-and-diu": () => import('./dadra-and-nagar-haveli-and-daman-and-diu.js'),
   "delhi": () => import('./delhi.js'),
   "goa": () => import('./goa.js'),
   "gujarat": () => import('./gujarat.js'),
@@ -378,6 +424,7 @@ export const loaders = {
   "jharkhand": () => import('./jharkhand.js'),
   "karnataka": () => import('./karnataka.js'),
   "kerala": () => import('./kerala.js'),
+  "ladakh": () => import('./ladakh.js'),
   "lakshadweep": () => import('./lakshadweep.js'),
   "madhya-pradesh": () => import('./madhya-pradesh.js'),
   "maharashtra": () => import('./maharashtra.js'),
@@ -391,6 +438,7 @@ export const loaders = {
   "rajasthan": () => import('./rajasthan.js'),
   "sikkim": () => import('./sikkim.js'),
   "tamil-nadu": () => import('./tamil-nadu.js'),
+  "telangana": () => import('./telangana.js'),
   "tripura": () => import('./tripura.js'),
   "uttar-pradesh": () => import('./uttar-pradesh.js'),
   "uttarakhand": () => import('./uttarakhand.js'),

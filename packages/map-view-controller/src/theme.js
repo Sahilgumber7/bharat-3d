@@ -4,14 +4,14 @@
  * These defaults are deliberately generic — no brand colours ship in the lib.
  */
 export const DEFAULT_THEME = {
-  accent: '#E8A820',          // active icon + highlight
-  accentContrast: '#0E1535',  // text/icon drawn on top of the accent
-  surface: 'rgba(14, 21, 53, 0.72)', // toolbar background
+  accent: '#7A7A85',          // active icon + highlight
+  accentContrast: '#111114',  // text/icon drawn on top of the accent
+  surface: 'rgba(20, 20, 24, 0.72)', // toolbar background
   surfaceHover: 'rgba(255, 255, 255, 0.08)',
   border: 'rgba(255, 255, 255, 0.14)',
   icon: 'rgba(255, 255, 255, 0.74)',
-  iconActive: '#0E1535',
-  tooltipBg: 'rgba(9, 13, 33, 0.94)',
+  iconActive: '#111114',
+  tooltipBg: 'rgba(10, 10, 12, 0.94)',
   tooltipText: 'rgba(255, 255, 255, 0.92)',
   radius: '12px',
   buttonSize: '38px',

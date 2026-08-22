@@ -1,7 +1,7 @@
 {
   "name": "@bharat3d/state-maps",
   "version": "0.1.0",
-  "description": "3D maps of every Indian state and UT for Three.js \u2014 641 districts, six camera presets (isometric, cross-section, top-down, elevation, walkthrough, exploded), themeable.",
+  "description": "3D maps of every Indian state and UT for Three.js \u2014 785 districts across 36 states/UTs, 6,472 sub-districts, six camera presets (isometric, cross-section, top-down, elevation, walkthrough, exploded), themeable.",
   "keywords": [
     "threejs",
     "3d",

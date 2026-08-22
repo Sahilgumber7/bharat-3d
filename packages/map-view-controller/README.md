@@ -1,6 +1,6 @@
 # @bharat3d/state-maps
 
-3D maps of **every Indian state and union territory** for Three.js — 35 states, 641 districts, six camera presets, themeable toolbar.
+3D maps of **every Indian state and union territory** for Three.js — 28 states + 8 UTs, 785 districts, six camera presets, themeable toolbar.
 
 Give it a container and a state slug. That's the whole integration.
 
@@ -24,7 +24,7 @@ Already have a Three.js scene? Skip `createStateMap` and use [`buildStateMap` + 
 ## Try it without installing anything
 
 ```bash
-npx @bharat3d/state-maps list             # all 35 states and their slugs
+npx @bharat3d/state-maps list             # all 36 states/UTs and their slugs
 npx @bharat3d/state-maps preview kerala   # live map on localhost
 npx @bharat3d/state-maps add tamil-nadu   # scaffold a runnable starter
 ```
@@ -166,14 +166,12 @@ Each district is an SVG path in a per-state pixel space 1000 units wide. `parts 
 
 ### Caveats — read before shipping
 
-Boundaries come from [DataMeet `maps`](https://github.com/datameet/maps), **Census 2011**. That vintage matters:
+Boundaries come from [bharatlas.com](https://bharatlas.com)'s Local Government Directory (LGD) district snapshot, 2024 — 785 districts across all 36 states/UTs, including Telangana and Ladakh. It's CC0-1.0 / CC-BY-4.0.
 
-- **Telangana is absent** — its districts are still filed under Andhra Pradesh.
-- **Ladakh is absent** — still part of Jammu & Kashmir.
-- **Dadra & Nagar Haveli** and **Daman & Diu** are separate; they merged into one UT in 2020.
-- District counts predate later reorganisations (UP is 71 here, 75 today).
+- **Very recent reorganisations may lag.** Ladakh's April 2026 split into five districts (Zanskar, Drass, Sham, Nubra, Changthang) postdates this snapshot, so Ladakh still shows as its pre-split 2 districts here.
+- Display names are normalised for casing (the source uses ALL CAPS) but **no boundary is altered**.
 
-So this is 35 states/UTs by 2011 reckoning, not the 36 you'd count now. Display names are normalised (the source misspells "Arunanchal Pradesh") but **no boundary is altered**. Check DataMeet's licence before redistributing the data.
+An older Census-2011 build (DataMeet `maps`, 35 states/UTs, Telangana/Ladakh absent) is still readable via `--src` if you need it for comparison.
 
 ### Regenerating
 
@@ -191,9 +189,9 @@ npm run build:data -- --src ./newer.geojson --tolerance 0.4
 ```bash
 npm install
 npm test          # data integrity, frustum fitting, palette gates
-npm run demo      # gallery of all 35 states at localhost:5173/examples/india/
+npm run demo      # gallery of all 36 states/UTs at localhost:5173/examples/india/
 ```
 
 ## Licence
 
-MIT. Boundary data is DataMeet's — see their terms.
+MIT. Boundary data is bharatlas.com's LGD snapshot, CC0-1.0 / CC-BY-4.0.

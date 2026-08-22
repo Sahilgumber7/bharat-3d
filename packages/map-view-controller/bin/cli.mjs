@@ -43,7 +43,7 @@ ${c.bold('Usage')}
   npx ${PKG.name} <command>
 
 ${c.bold('Commands')}
-  ${c.accent('list')} [filter]        Every state and UT, with its slug and district count
+  ${c.accent('list')} [filter]        Every state and UT, with its slug, district and sub-district count
   ${c.accent('add')} <slug>           Scaffold a runnable starter for one state
        --out <dir>        Where to write it            ${c.dim('(default: ./<slug>-map)')}
        --framework <f>    html | react                 ${c.dim('(default: html)')}
@@ -71,10 +71,14 @@ function list() {
   const w = Math.max(...rows.map((s) => s.slug.length));
   console.log();
   for (const s of rows) {
-    console.log(`  ${c.accent(s.slug.padEnd(w))}  ${s.name.padEnd(28)} ${c.dim(`${s.districtCount} districts`)}`);
+    console.log(
+      `  ${c.accent(s.slug.padEnd(w))}  ${s.name.padEnd(28)} ${c.dim(`${s.districtCount} districts, ${s.subDistrictCount} sub-districts`)}`
+    );
   }
   console.log(
-    c.dim(`\n  ${rows.length} of ${registry.STATE_COUNT} states/UTs · ${registry.DISTRICT_COUNT} districts total\n`)
+    c.dim(
+      `\n  ${rows.length} of ${registry.STATE_COUNT} states/UTs · ${registry.DISTRICT_COUNT} districts · ${registry.SUB_DISTRICT_COUNT} sub-districts total\n`
+    )
   );
 }
 
@@ -133,7 +137,7 @@ async function add() {
 
   const rel = path.relative(process.cwd(), outDir) || '.';
   console.log(`
-${c.green('✓')} ${c.bold(entry.name)} ${c.dim(`(${entry.districtCount} districts)`)} scaffolded into ${c.accent(rel)}
+${c.green('✓')} ${c.bold(entry.name)} ${c.dim(`(${entry.districtCount} districts, ${entry.subDistrictCount} sub-districts)`)} scaffolded into ${c.accent(rel)}
 
   ${c.dim('next:')}
     cd ${rel}
@@ -205,7 +209,7 @@ async function preview() {
 
   server.listen(port, () => {
     console.log(`
-  ${c.bold(entry.name)} ${c.dim(`· ${entry.districtCount} districts`)}
+  ${c.bold(entry.name)} ${c.dim(`· ${entry.districtCount} districts · ${entry.subDistrictCount} sub-districts`)}
   ${c.accent(`http://localhost:${port}`)}   ${c.dim('ctrl-c to stop')}
 `);
   });
