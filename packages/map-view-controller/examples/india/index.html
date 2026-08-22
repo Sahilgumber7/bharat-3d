@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<!-- Real caching (Cache-Control, ETags) is set at the server via ../../serve.json —
+     a <meta> Cache-Control tag has no effect on actual HTTP caching, only this
+     page's own behavior can be controlled from here. -->
+<!-- Everything this page loads is same-origin (three.js is vendored, not
+     CDN-fetched) except Google Fonts, which is explicitly allow-listed. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
 <title>bharat3d — every Indian state in 3D</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -140,13 +147,14 @@
   }
   #intro .tagline b { color: #fff; font-weight: 600; }
 
-  #intro .counters { display: flex; gap: 28px; justify-content: center; margin-top: 22px; }
+  #intro .counters { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; margin-top: 22px; }
   #intro .counters .c {
     opacity: 0; transform: translateY(8px); animation: introUp 600ms cubic-bezier(.16,1,.3,1) forwards;
   }
-  #intro .counters .c:nth-child(1) { animation-delay: 520ms; }
-  #intro .counters .c:nth-child(2) { animation-delay: 620ms; }
-  #intro .counters .c:nth-child(3) { animation-delay: 720ms; }
+  #intro .counters .c:nth-child(1) { animation-delay: 480ms; }
+  #intro .counters .c:nth-child(2) { animation-delay: 560ms; }
+  #intro .counters .c:nth-child(3) { animation-delay: 640ms; }
+  #intro .counters .c:nth-child(4) { animation-delay: 720ms; }
   #intro .counters b {
     display: block; font-family: "Space Grotesk", sans-serif; font-weight: 700;
     font-size: clamp(20px, 3vw, 30px); letter-spacing: -.01em;
@@ -200,8 +208,56 @@
     border: 1px solid var(--line);
     box-shadow: 0 24px 60px -20px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
     backdrop-filter: blur(16px);
-    transition: background 240ms ease, border-color 240ms ease;
+    transition: background 240ms ease, border-color 240ms ease, transform 280ms cubic-bezier(.4,0,.2,1), opacity 220ms ease;
   }
+  #stage.sidebar-collapsed .panel {
+    transform: translateX(-320px);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* A drawer handle fused to the panel's edge, not a disconnected floating
+     chip — flat on the side that meets the panel, its own shadow/blur/border
+     otherwise matching it so the two read as one object. */
+  .sidebarToggle {
+    position: absolute; top: 22px; left: 304px; z-index: 3;
+    width: 20px; height: 68px;
+    display: grid; place-items: center;
+    border-radius: 0 14px 14px 0;
+    border: 1px solid var(--line); border-left: none;
+    background:
+      linear-gradient(160deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent 40%),
+      var(--panel);
+    color: var(--muted); cursor: pointer;
+    backdrop-filter: blur(16px);
+    box-shadow: 6px 10px 24px -12px rgba(0,0,0,.4);
+    transition: left 280ms cubic-bezier(.4,0,.2,1), color 140ms ease, background 240ms ease, border-color 240ms ease;
+  }
+  .sidebarToggle:hover { color: var(--ink); }
+  .sidebarToggle svg { width: 13px; height: 13px; display: block; transition: transform 220ms ease; }
+  .sidebarToggle[aria-expanded="false"] svg { transform: rotate(180deg); }
+  #stage.sidebar-collapsed .sidebarToggle {
+    left: 0; border-radius: 0 14px 14px 0;
+    border: 1px solid var(--line); border-left: none;
+  }
+
+  /* top-right "back" nav — always-visible escape hatch out of a district
+     split or a state, independent of the breadcrumb inside the panel */
+  .navTop { position: absolute; top: 16px; right: 16px; z-index: 2; display: flex; gap: 8px; }
+  .navTop button {
+    display: flex; align-items: center; gap: 6px;
+    padding: 9px 14px; border-radius: 12px;
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(160deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent 40%),
+      var(--panel);
+    color: var(--ink); font: 600 12px "Space Grotesk", sans-serif; letter-spacing: -.01em;
+    cursor: pointer; backdrop-filter: blur(16px);
+    box-shadow: 0 12px 30px -12px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06);
+    transition: background 140ms ease, transform 140ms ease, border-color 140ms ease;
+  }
+  .navTop button:hover { transform: translateY(-1px); border-color: var(--accent); }
+  .navTop button svg { width: 14px; height: 14px; display: block; }
 
   .brand { display: flex; align-items: baseline; gap: 7px; margin-bottom: 3px; }
   .brand .mark {
@@ -306,34 +362,17 @@
 </head>
 <body>
 <script>
-  // Recolour the intro to match whichever palette is saved from last visit —
-  // runs before #intro is even parsed, so there's no flash of the wrong hue.
-  // Kept as a tiny literal table (not an import of palettes.js) so it can run
-  // synchronously with zero module-fetch latency.
+  // The intro is India's own hero moment — saffron and green (the flag),
+  // not whichever theme palette happens to be saved from last visit. Kept
+  // as inline literals (not an import of palettes.js) so it can run
+  // synchronously, before #intro is even parsed, with zero module-fetch
+  // latency and no flash of the wrong hue.
   (function () {
-    var ACCENTS = { midnight: '#B24BFF', paper: '#6D28FF', ember: '#C6FF3D', aqua: '#FF3DAE' };
-    var id = localStorage.getItem('mvc-palette') || 'paper';
-    var hex = ACCENTS[id] || ACCENTS.midnight;
-    function hueRotate(hex, deg) {
-      var n = parseInt(hex.slice(1), 16);
-      var r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
-      var max = Math.max(r, g, b), min = Math.min(r, g, b);
-      var h = 0, s = 0, l = (max + min) / 2, d = max - min;
-      if (d) {
-        s = d / (1 - Math.abs(2 * l - 1));
-        if (max === r) h = ((g - b) / d) % 6;
-        else if (max === g) h = (b - r) / d + 2;
-        else h = (r - g) / d + 4;
-        h *= 60; if (h < 0) h += 360;
-      }
-      h = (h + deg) % 360;
-      return 'hsl(' + h.toFixed(0) + ' ' + Math.round(s * 100) + '% ' + Math.round(Math.min(l * 100 + 6, 78)) + '%)';
-    }
     var root = document.documentElement.style;
-    root.setProperty('--i1', hex);
-    root.setProperty('--i2', hueRotate(hex, 130));
-    root.setProperty('--i3', hueRotate(hex, 250));
-    root.setProperty('--i4', hueRotate(hex, 45));
+    root.setProperty('--i1', '#FF9933'); // saffron
+    root.setProperty('--i2', '#128807'); // India green
+    root.setProperty('--i3', '#FFC169'); // saffron, lighter
+    root.setProperty('--i4', '#3DBA5C'); // green, lighter
   })();
 </script>
 <div id="intro" role="button" tabindex="0" aria-label="Skip intro">
@@ -352,6 +391,7 @@
     <p class="tagline">Every Indian state, district and sub-district, mapped in 3D.</p>
     <div class="counters">
       <div class="c"><b id="cStates">0</b><span>states</span></div>
+      <div class="c"><b id="cUTs">0</b><span>union territories</span></div>
       <div class="c"><b id="cDistricts">0</b><span>districts</span></div>
       <div class="c"><b id="cSub">0</b><span>sub-dist.</span></div>
     </div>
@@ -364,6 +404,10 @@
 </div>
 <div id="stage">
   <div id="glow"></div>
+  <div class="navTop" id="navTop"></div>
+  <button type="button" class="sidebarToggle" id="sidebarToggle" aria-label="Toggle sidebar" aria-expanded="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
   <div class="panel">
     <div class="brand"><span class="mark">bharat3d</span><span class="tag">beta</span></div>
     <div class="crumbs" id="crumbs"></div>
@@ -387,11 +431,12 @@
 </div>
 
 <script type="importmap">
-{ "imports": { "three": "https://unpkg.com/three@0.128.0/build/three.module.js" } }
+{ "imports": { "three": "./vendor/three/three.module.js" } }
 </script>
 
 <script type="module">
 import * as THREE from 'three';
+import { OrbitControls } from './vendor/three/OrbitControls.js';
 import { MapViewController, buildStateMap, buildPieces, parsePath, PALETTES, getPalette, rampStep, DEFAULT_VIEWS, fitBox } from '../../src/index.js';
 
 // Shared with the ad-hoc sub-district build below, so a split piece lands in
@@ -401,11 +446,38 @@ const SHAPE_OPTS = { span: 240, thickness: 4.5, relief: 0.35, gap: 0.01 };
 // Cross-section is a real feature (a clipping plane through the state) but
 // reads as a confusing near-duplicate of Isometric in a gallery like this —
 // drop it from the toolbar here without touching the library's default six.
-const VIEWS = DEFAULT_VIEWS.filter((v) => v.id !== 'crossSection');
+// Front elevation doesn't add anything a gallery visitor needs either — cut too.
+const VIEWS = DEFAULT_VIEWS.filter((v) => v.id !== 'crossSection' && v.id !== 'frontElevation');
 import { STATES, STATE_COUNT, DISTRICT_COUNT, SUB_DISTRICT_COUNT, loadStateData } from '../../data/states/index.js';
+
+// The data pack doesn't tag entries as state vs. union territory, so this is
+// India's fixed, well-known list of the 8 — everything else in STATES (28) is
+// a state.
+const UT_SLUGS = new Set([
+  'andaman-and-nicobar-islands',
+  'chandigarh',
+  'dadra-and-nagar-haveli-and-daman-and-diu',
+  'delhi',
+  'jammu-and-kashmir',
+  'ladakh',
+  'lakshadweep',
+  'puducherry',
+]);
+const UT_COUNT = STATES.filter((s) => UT_SLUGS.has(s.slug)).length;
+const STATE_ONLY_COUNT = STATE_COUNT - UT_COUNT;
 
 const stage = document.getElementById('stage');
 const statusEl = document.getElementById('status');
+
+const SIDEBAR_KEY = 'mvc-sidebar-collapsed';
+const sidebarToggle = document.getElementById('sidebarToggle');
+function setSidebarCollapsed(collapsed) {
+  stage.classList.toggle('sidebar-collapsed', collapsed);
+  sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+  localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0');
+}
+sidebarToggle.addEventListener('click', () => setSidebarCollapsed(!stage.classList.contains('sidebar-collapsed')));
+setSidebarCollapsed(localStorage.getItem(SIDEBAR_KEY) === '1');
 
 /* ------------------------------------------------------------------ *
  * Intro → dashboard reveal.
@@ -484,11 +556,13 @@ introEl.addEventListener('keydown', skipIntro);
 
 if (!reducedMotion) {
   cycleHints();
-  countUp(document.getElementById('cStates'), STATE_COUNT, 3200);
+  countUp(document.getElementById('cStates'), STATE_ONLY_COUNT, 2800);
+  countUp(document.getElementById('cUTs'), UT_COUNT, 3000);
   countUp(document.getElementById('cDistricts'), DISTRICT_COUNT, 3600);
   countUp(document.getElementById('cSub'), SUB_DISTRICT_COUNT, 4000);
 } else {
-  document.getElementById('cStates').textContent = STATE_COUNT;
+  document.getElementById('cStates').textContent = STATE_ONLY_COUNT;
+  document.getElementById('cUTs').textContent = UT_COUNT;
   document.getElementById('cDistricts').textContent = DISTRICT_COUNT;
   document.getElementById('cSub').textContent = SUB_DISTRICT_COUNT.toLocaleString();
 }
@@ -595,6 +669,40 @@ stage.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, stage.clientWidth / stage.clientHeight, 0.5, 6000);
 
+/* ------------------------------------------------------------------ *
+ * Free mouse orbit/pan/zoom, layered underneath the preset camera
+ * views — drag to rotate, right-drag/two-finger to pan, wheel to zoom.
+ * `controlsHandle` is a stable object (same identity for the controller's
+ * whole lifetime) so it can be handed to every MapViewController as
+ * `options.controls`: MapViewController writes each preset's look-at
+ * target into `.target` and calls `.update()` as it tweens, which keeps
+ * OrbitControls following the animated camera instead of fighting it.
+ *
+ * OrbitControls caches the camera's *up* vector once, at construction,
+ * to know which axis is "vertical" for orbiting — it never re-reads
+ * `camera.up` after that. Most view presets share one up vector, but a
+ * few (topDown, and the India tier's own isometric) use a different one,
+ * which would leave the cached axis stale and orbiting feel skewed. The
+ * render loop below recreates the underlying OrbitControls instance
+ * whenever `camera.up` actually changes, so the cached axis never goes
+ * stale — `controlsHandle` itself never changes, so MapViewController's
+ * reference to it stays valid across those swaps.
+ * ------------------------------------------------------------------ */
+let controls = null;
+const controlsTarget = new THREE.Vector3();
+function rebuildControls() {
+  controls?.dispose();
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.target.copy(controlsTarget);
+}
+rebuildControls();
+const controlsHandle = {
+  target: controlsTarget,
+  update: () => controls?.update(),
+};
+
 const hemi = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
 scene.add(hemi);
 const key = new THREE.DirectionalLight(0xffffff, 0.7);
@@ -663,7 +771,11 @@ function applyPalette(p) {
 
   current?.recolor(p.ramp);
   mvc?.setTheme(p.theme);
-  if (split) split.pieces.forEach((piece) => piece.mesh.material.color.set(rampStep(p.ramp, piece.t)));
+  if (split) {
+    split.pieces.forEach((piece) => piece.mesh.material.color.set(rampStep(p.ramp, piece.t)));
+    for (const d of current.districts) d.mesh.userData._origColor = null; // recolor() just repainted these
+    dimSiblingDistricts(split.mesh);
+  }
 
   document.getElementById('rampBar').innerHTML =
     p.ramp.map((c) => `<i style="background:${c}"></i>`).join('');
@@ -760,13 +872,23 @@ async function buildOverview() {
   const NATIONAL_SPAN = 320;
   const scale = NATIONAL_SPAN / ((maxLon - minLon) * kx);
   const viewH = (maxLat - minLat) * scale;
-  // X is mirrored (east -> more negative world X): with this camera's up set
-  // to true north, screen-right works out to world -X, so this mirror is
-  // what lands east on the right of the screen. Verified against real
-  // states' lat/lon — re-check both axes if this ever moves.
+  // No mirroring on X: increasing longitude (east) maps to increasing world
+  // X, which this camera projects to increasing screen X — i.e. east ends up
+  // on the right, as a map should read. (An earlier version of this comment
+  // claimed the opposite and mirrored X to "compensate" — that was simply
+  // wrong, verified by projecting known east/west states, e.g. Lakshadweep
+  // vs Andaman & Nicobar, through the live camera.)
+  //
+  // The y term is negated so that, after ExtrudeGeometry's rotateX(-90°),
+  // geographic north lands on world -Z — the same convention buildStateMap()
+  // uses for every individual state map. Getting this wrong doesn't break the
+  // hand-tuned isometric pose below (which is expressed in terms of its own
+  // `north` vector either way), but it silently inverts every *generic*
+  // MapViewController preset (topDown/firstPerson/exploded),
+  // since those are derived from computeFrame()'s hardcoded north = (0,0,-1).
   const project = ([lon, lat]) => [
-    -(lon - minLon) * kx * scale + NATIONAL_SPAN / 2,
-    (maxLat - lat) * scale - viewH / 2,
+    (lon - minLon) * kx * scale - NATIONAL_SPAN / 2,
+    -((maxLat - lat) * scale - viewH / 2),
   ];
 
   const group = new THREE.Group();
@@ -774,25 +896,30 @@ async function buildOverview() {
 
   perState.forEach((s, i) => {
     const color = new THREE.Color(palette.ramp[i % palette.ramp.length]);
-    const stateGroup = new THREE.Group();
-    for (const d of s.districts) {
-      const shapes = d.rings.map((ring) => {
+    // One merged shape (all of the state's districts) per state, not one mesh
+    // per district — every district in a state renders the same flat colour
+    // anyway, so separate district meshes bought nothing but noisy internal
+    // seams (visible side-wall slivers along every district boundary, worse
+    // the taller the extrusion). A single extrude has no interior seams at all.
+    const shapes = s.districts.flatMap((d) =>
+      d.rings.map((ring) => {
         const pts = ring.map(project);
         const sh = new THREE.Shape();
         pts.forEach(([x, y], k) => (k ? sh.lineTo(x, y) : sh.moveTo(x, y)));
         return sh;
-      });
-      const geom = new THREE.ExtrudeGeometry(shapes, { depth: 3.4, bevelEnabled: false });
-      geom.rotateX(-Math.PI / 2);
-      const mesh = new THREE.Mesh(
-        geom,
-        new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.04, side: THREE.DoubleSide })
-      );
-      mesh.userData.isState = true;
-      mesh.userData.stateSlug = s.slug;
-      mesh.name = s.name;
-      stateGroup.add(mesh);
-    }
+      })
+    );
+    const geom = new THREE.ExtrudeGeometry(shapes, { depth: 8, bevelEnabled: false });
+    geom.rotateX(-Math.PI / 2);
+    const mesh = new THREE.Mesh(
+      geom,
+      new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.04, side: THREE.DoubleSide })
+    );
+    mesh.userData.isState = true;
+    mesh.userData.stateSlug = s.slug;
+    mesh.name = s.name;
+    const stateGroup = new THREE.Group();
+    stateGroup.add(mesh);
     group.add(stateGroup);
     states.push({ slug: s.slug, name: s.name, group: stateGroup });
   });
@@ -804,12 +931,9 @@ async function buildOverview() {
   // Nearly top-down — this is meant to read as a clickable map, not a hero
   // shot, so a strong oblique angle just wastes frame on foreshortening.
   const worldUp = new THREE.Vector3(0, 1, 0);
-  // Empirically +Z, not the -Z the rest of this lib nominally calls "north":
-  // shape-space y grows southward (SVG-like) and ExtrudeGeometry's
-  // rotateX(-90°) sends shape-y -> world -z, so a small (northerly) y lands
-  // on a *positive* world z. Verified against real states' lat/lon below —
-  // don't "fix" this back to (0,0,-1) without re-checking that.
-  const north = new THREE.Vector3(0, 0, 1);
+  // Matches computeFrame()'s convention (and now project()'s, above): north
+  // is world -Z. Keep this in sync with project() if that ever changes.
+  const north = new THREE.Vector3(0, 0, -1);
   const dir = new THREE.Vector3().addScaledVector(north, -0.72).addScaledVector(worldUp, 0.68).normalize();
   // Looking nearly straight down means `dir` is nearly parallel to world-up —
   // using world-up as the camera's up vector there is degenerate (forward ≈
@@ -824,6 +948,8 @@ async function buildOverview() {
   overview = {
     group,
     states,
+    box,
+    north: north.clone(),
     pose: {
       position: center.clone().addScaledVector(dir, dist),
       target: center.clone(),
@@ -838,16 +964,81 @@ async function buildOverview() {
   scene.add(group);
 }
 
-/** Only for the very first paint, before any camera pose exists to swish from. */
-function snapCameraToOverview() {
-  camera.position.copy(overview.pose.position);
-  camera.up.copy(overview.pose.up);
-  camera.fov = overview.pose.fov;
-  camera.lookAt(overview.pose.target);
-  camera.updateProjectionMatrix();
+/* ------------------------------------------------------------------ *
+ * The India tier gets the same MapViewController (toolbar, themed,
+ * multi-view) as a state does, so switching tiers feels continuous
+ * rather than dropping into a stripped-down mode. 'isometric' is
+ * overridden with the hand-tuned north-up pose above — the rest of
+ * VIEWS (topDown/exploded/firstPerson) fall back to the
+ * library's generic bounds-based computation.
+ * ------------------------------------------------------------------ */
+function indiaConfig() {
+  return {
+    name: 'India',
+    bounds: { min: overview.box.min, max: overview.box.max },
+    centroid: overview.pose.target.clone(),
+    // Real "districts" for the Exploder — one entry per *state*, so the
+    // exploded view pulls whole states apart from the national centroid
+    // rather than being a no-op (there are no individual district meshes at
+    // this tier to explode).
+    districts: overview.states.map((s) => ({ name: s.name, mesh: s.group })),
+    explode: { factor: 0.5 },
+    // The default walkthrough eye height is tuned for a ~240-unit state map;
+    // at national scale (span ~320 but near-continuous terrain) that default
+    // plants the camera right at the nearest district wall. Standing taller
+    // clears it into an actual flyover.
+    firstPerson: { eyeHeight: 46 },
+    upAxis: 'y',
+  };
+}
+
+function indiaViews() {
+  // Keep the original view's label/title/icon (what the toolbar renders) —
+  // only the camera math is being swapped out.
+  return VIEWS.map((v) => (v.id === 'isometric' ? { ...v, compute: () => overview.pose } : v));
+}
+
+function buildIndiaController(initialView) {
+  return new MapViewController(scene, camera, indiaConfig(), {
+    renderer,
+    theme: palette.theme,
+    duration: 750,
+    views: indiaViews(),
+    initialView: initialView ?? 'isometric',
+    controls: controlsHandle,
+    onViewChange: (id) => { view = id; paintMeta(); },
+  });
 }
 
 /** Swish back out to the national picker, then drop the current state. */
+function wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+// A state's map lives in its own local pixel frame — unrelated in scale and
+// origin to the national-projection frame the overview lives in. Swishing
+// the *camera* between them used to read as a glitchy, discontinuous jump,
+// so instead the *stage* itself swishes: a quick directional scale + blur,
+// hiding the coordinate-frame cut underneath. dir=1 reads as pushing forward
+// into the map (drilling into a state); dir=-1 reads as pulling back out
+// (returning to India).
+async function swishOut(dir = 1) {
+  stage.style.transition = 'transform 240ms cubic-bezier(.55,0,.85,.15), filter 240ms ease, opacity 240ms ease';
+  stage.style.transform = `scale(${dir > 0 ? 1.14 : 0.88}) rotate(${dir > 0 ? 0.6 : -0.6}deg)`;
+  stage.style.filter = 'blur(12px)';
+  stage.style.opacity = '0.1';
+  await wait(240);
+}
+async function swishIn(dir = 1) {
+  stage.style.transform = `scale(${dir > 0 ? 0.88 : 1.14}) rotate(${dir > 0 ? -0.6 : 0.6}deg)`;
+  requestAnimationFrame(() => {
+    stage.style.transition = 'transform 340ms cubic-bezier(.16,1,.3,1), filter 320ms ease, opacity 300ms ease';
+    stage.style.transform = 'scale(1) rotate(0deg)';
+    stage.style.filter = '';
+    stage.style.opacity = '';
+  });
+  await wait(360);
+  stage.style.transition = '';
+}
+
 async function goToIndia() {
   if (tier === 'india' || !mvc) return;
   hardCollapseSplit();
@@ -857,22 +1048,26 @@ async function goToIndia() {
     flashStatus('assembling the national map…', 8000);
     await buildOverview();
   }
-  scene.add(overview.group);
-  mvc.registerView({ id: 'india', compute: () => overview.pose });
-  await mvc.setView('india');
 
+  await swishOut(-1);
+
+  scene.add(overview.group);
   mvc.destroy();
-  mvc = null;
   scene.remove(current.group);
   current.dispose();
   current = null;
   activeSlug = null;
   currentData = null;
   tier = 'india';
-  view = null;
+
+  mvc = buildIndiaController('isometric');
+  window.mvc = mvc;
+
   paintMeta();
   paintCrumbs();
   renderList();
+
+  await swishIn(-1);
 }
 
 function paintCrumbs() {
@@ -888,7 +1083,26 @@ function paintCrumbs() {
     parts.push('<span class="sep">/</span>', `<span class="current">${split.name}</span>`);
   }
   crumbsEl.innerHTML = parts.join('');
+  paintNav();
 }
+
+const BACK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>';
+
+/** Always-visible top-right escape hatch — back out of a split, or all the way to India. */
+function paintNav() {
+  const navEl = document.getElementById('navTop');
+  const parts = [];
+  if (tier === 'district') parts.push(`<button data-nav="state">${BACK_ICON}<span>Back to state</span></button>`);
+  if (tier !== 'india') parts.push(`<button data-nav="india">${BACK_ICON}<span>Back to India</span></button>`);
+  navEl.innerHTML = parts.join('');
+}
+
+document.getElementById('navTop').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-nav]');
+  if (!btn) return;
+  if (btn.dataset.nav === 'india') goToIndia();
+  else if (btn.dataset.nav === 'state') collapseSplit();
+});
 
 document.getElementById('crumbs').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-crumb]');
@@ -943,6 +1157,35 @@ function focusView(box) {
   };
 }
 
+// While a district is split open, every sibling district flattens to one
+// neutral colour and the grid fades back — a clean, uncluttered stage for
+// the sub-district geometry, rather than a full-colour state map behind it.
+function dimSiblingDistricts(exceptMesh) {
+  const flat = palette.mode === 'light' ? 0xdcdad5 : 0x2c2c33;
+  for (const d of current.districts) {
+    if (d.mesh === exceptMesh) continue;
+    if (!d.mesh.userData._origColor) d.mesh.userData._origColor = d.mesh.material.color.clone();
+    d.mesh.material.color.setHex(flat);
+  }
+  if (grid && grid.userData._origOpacity === undefined) {
+    grid.userData._origOpacity = grid.material.opacity;
+    grid.material.opacity = grid.userData._origOpacity * 0.35;
+  }
+}
+
+function restoreSiblingDistricts() {
+  for (const d of current.districts) {
+    if (d.mesh.userData._origColor) {
+      d.mesh.material.color.copy(d.mesh.userData._origColor);
+      delete d.mesh.userData._origColor;
+    }
+  }
+  if (grid && grid.userData._origOpacity !== undefined) {
+    grid.material.opacity = grid.userData._origOpacity;
+    delete grid.userData._origOpacity;
+  }
+}
+
 function teardownSplit(s) {
   current.group.remove(s.subGroup);
   for (const { mesh } of s.pieces) {
@@ -950,6 +1193,7 @@ function teardownSplit(s) {
     mesh.material.dispose();
   }
   s.mesh.visible = true;
+  restoreSiblingDistricts();
 }
 
 /** Swish the camera back to the state view, then remove the sub-group. */
@@ -987,6 +1231,7 @@ function splitDistrict(mesh, name) {
   subGroup.position.copy(mesh.position);
   current.group.add(subGroup);
   mesh.visible = false;
+  dimSiblingDistricts(mesh);
 
   split = { name, mesh, subGroup, pieces, beforeView };
 
@@ -1091,6 +1336,11 @@ async function loadState(slug, { fromOverview = false } = {}) {
 
   const data = cache.get(slug);
 
+  // The overview and a state's own map are unrelated coordinate frames (see
+  // swishOut's comment) — hide the cut behind a stage swish rather than
+  // swishing the *camera* across it.
+  if (fromOverview) await swishOut(1);
+
   // Tear down the previous state before building the next.
   mvc?.destroy();
   if (current) {
@@ -1120,10 +1370,8 @@ async function loadState(slug, { fromOverview = false } = {}) {
     theme: palette.theme,
     duration: 750,
     views: VIEWS,
-    // Coming from the India overview: skip the automatic immediate snap so
-    // the camera tweens FROM wherever the overview left it — the camera
-    // hasn't moved yet, so `setView` below animates from that exact pose.
-    initialView: fromOverview ? null : keepView || 'isometric',
+    initialView: keepView || 'isometric',
+    controls: controlsHandle,
     onViewChange: (id) => { view = id; paintMeta(); },
   });
   window.mvc = mvc;
@@ -1131,10 +1379,7 @@ async function loadState(slug, { fromOverview = false } = {}) {
   activeSlug = slug;
   tier = 'state';
 
-  if (fromOverview) {
-    await mvc.setView(keepView || 'isometric');
-    scene.remove(overview.group); // the flat national map has served its purpose
-  }
+  if (fromOverview) scene.remove(overview.group); // the flat national map has served its purpose
 
   view = mvc.getView();
   paintMeta();
@@ -1142,6 +1387,8 @@ async function loadState(slug, { fromOverview = false } = {}) {
   renderList(document.getElementById('filter').value);
   statusEl.hidden = true;
   if (!revealed) setProgress(100, 'ready');
+
+  if (fromOverview) await swishIn(1);
 }
 
 let view = 'isometric';
@@ -1178,9 +1425,15 @@ addEventListener('resize', () => {
   mvc?.refresh();
 });
 
+const _lastControlsUp = camera.up.clone();
 (function tick() {
   requestAnimationFrame(tick);
   if (split) split.subGroup.position.copy(split.mesh.position);
+  if (!camera.up.equals(_lastControlsUp)) {
+    _lastControlsUp.copy(camera.up);
+    rebuildControls();
+  }
+  controls?.update();
   renderer.render(scene, camera);
 })();
 
@@ -1193,7 +1446,8 @@ if (registry.states.some((s) => s.slug === initial)) {
   await loadState(initial);
 } else {
   await buildOverview();
-  snapCameraToOverview();
+  mvc = buildIndiaController();
+  window.mvc = mvc;
   tier = 'india';
   paintMeta();
   paintCrumbs();

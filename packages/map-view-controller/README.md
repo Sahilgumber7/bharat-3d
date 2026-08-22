@@ -17,7 +17,24 @@ const map = await createStateMap({
 
 It builds the renderer, scene, camera, lights, render loop and resize handling, and mounts a toolbar with six views: **isometric**, **cross-section** (a real clipping plane), **2D top-down**, **front elevation**, **first-person walkthrough**, and **exploded districts**.
 
-Already have a Three.js scene? Skip `createStateMap` and use [`buildStateMap` + `MapViewController`](#already-have-a-scene) against your own objects.
+Want the whole country instead of one state — a clickable national picker? Same shape, [`createIndiaMap`](#createindiamapoptions--promiseindiamaphandle):
+
+```js
+import { createIndiaMap, createStateMap } from '@bharat3d/state-maps';
+import { STATES, loadStateData } from '@bharat3d/state-maps/data';
+
+const india = await createIndiaMap({
+  container: '#map',
+  registry: STATES,
+  load: loadStateData,
+  onSelect: async (slug) => {
+    india.destroy();
+    await createStateMap({ container: '#map', state: slug, load: loadStateData });
+  },
+});
+```
+
+Already have a Three.js scene? Skip `createStateMap`/`createIndiaMap` and use [`buildStateMap`/`buildIndiaMap` + `MapViewController`](#already-have-a-scene) against your own objects.
 
 ---
 
@@ -87,6 +104,25 @@ map.destroy();                       // removes canvas, listeners, GPU resources
 
 Presets derive from each state's bounding box, so nothing is hand-tuned per state — the same code frames Delhi and Rajasthan correctly.
 
+### `createIndiaMap(options) => Promise<IndiaMapHandle>`
+
+Every state and UT, reprojected onto one shared real-geography canvas and merged into one coloured mesh per state — a clickable national picker, themeable and camera-driven exactly like `createStateMap`.
+
+| Option | Default | |
+| --- | --- | --- |
+| `container` | — | **Required.** Element or selector. |
+| `registry` + `load` | — | `STATES` + `loadStateData` from `/data`, to fetch every state on demand. |
+| `states` | — | Already-loaded `[{ slug, name, doc }]` — use instead of `registry`/`load` to control bundling. |
+| `palette` | `'midnight'` | `midnight` · `paper` · `ember` · `aqua` |
+| `view` | `'isometric'` | Starting preset — `isometric` (north-up), `topDown`, `firstPerson`, or `exploded` (states fly apart from the national centroid) |
+| `span` | `320` | World size of the map's longest axis |
+| `depth` | `8` | Extrusion depth |
+| `onSelect` | — | `(slug, state) => void` — fires on click. Nothing happens automatically; swap to `createStateMap` yourself, as above. |
+| `onHover` | — | `(slug \| null, state \| null) => void` — only wired up if you pass it |
+| `onViewChange`, `background`, `grid`, `toolbar`, `position` | — | Same as `createStateMap` |
+
+The handle is the same shape as `createStateMap`'s: `setView`, `getView`, `setPalette`, `states` (each `{ slug, name, group, mesh }`), `scene`/`camera`/`renderer`/`controller`, `resize`, `destroy`.
+
 ### `/data`
 
 ```js
@@ -118,6 +154,20 @@ const mvc = new MapViewController(scene, camera, stateConfig, { renderer });
 ```
 
 `MapViewController` works against *any* geometry, not just this data pack — pass your own `stateConfig` (`{ name, bounds, centroid, districts, viewOverrides }`) and it derives every preset from that. Full surface: [`src/index.d.ts`](src/index.d.ts).
+
+The India-wide equivalent is `buildIndiaMap`:
+
+```js
+import { buildIndiaMap } from '@bharat3d/state-maps';
+import { STATES, loadStateData } from '@bharat3d/state-maps/data';
+
+const docs = await Promise.all(STATES.map((s) => loadStateData(s.slug)));
+const entries = STATES.map((s, i) => ({ slug: s.slug, name: s.name, doc: docs[i] }));
+
+const { group, states, box, recolor } = buildIndiaMap(entries);
+scene.add(group);
+// states: [{ slug, name, group, mesh }] — mesh.userData.stateSlug for your own raycasting
+```
 
 ### React
 

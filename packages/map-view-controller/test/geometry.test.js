@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { computeFrame, fitBox, toVec } from '../src/geometry.js';
 import { buildStateMap } from '../src/state-map.js';
+import { buildIndiaMap } from '../src/india-map.js';
 import { loadStateData, STATES } from '../data/states/index.js';
 
 const boxOf = (min, max) => new THREE.Box3(new THREE.Vector3(...min), new THREE.Vector3(...max));
@@ -123,4 +124,36 @@ test('the whole data pack builds', async () => {
     assert.ok(f.height > 0 && Number.isFinite(f.radius), `${entry.slug}: bad frame`);
     built.dispose();
   }
+});
+
+test('buildIndiaMap produces one merged mesh per state, correctly east/west oriented', async () => {
+  const [bihar, delhi, goa] = await Promise.all(
+    ['bihar', 'delhi', 'goa'].map((slug) => loadStateData(slug))
+  );
+  const entries = [
+    { slug: 'bihar', name: 'Bihar', doc: bihar },
+    { slug: 'delhi', name: 'Delhi', doc: delhi },
+    { slug: 'goa', name: 'Goa', doc: goa },
+  ];
+  const built = buildIndiaMap(entries);
+
+  assert.equal(built.states.length, 3);
+  for (const s of built.states) {
+    assert.ok(s.mesh.geometry.attributes.position.count > 0, `${s.slug}: empty geometry`);
+    assert.equal(s.mesh.userData.stateSlug, s.slug);
+  }
+
+  // Bihar (lon ~83-88, east) must land at a larger world X than Delhi
+  // (lon ~76-77.5, west) — a real regression once flipped the whole map
+  // east/west while looking "close enough" in a screenshot.
+  const centerX = (slug) =>
+    new THREE.Box3()
+      .setFromObject(built.states.find((s) => s.slug === slug).mesh)
+      .getCenter(new THREE.Vector3()).x;
+  assert.ok(centerX('bihar') > centerX('delhi'), 'Bihar (east) should sit right of Delhi (west)');
+
+  built.recolor(['#ff0000', '#00ff00', '#0000ff']);
+  assert.equal('#' + built.states[0].mesh.material.color.getHexString(), '#ff0000');
+
+  built.dispose();
 });

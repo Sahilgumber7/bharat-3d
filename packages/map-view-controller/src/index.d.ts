@@ -304,6 +304,93 @@ export declare function createStateMap(options: CreateStateMapOptions): Promise<
 export default createStateMap;
 
 /* ------------------------------------------------------------------ *
+ * buildIndiaMap / createIndiaMap
+ * ------------------------------------------------------------------ */
+
+export interface IndiaStateEntry {
+  slug: string;
+  name: string;
+  doc: StateData;
+}
+
+export interface BuildIndiaMapOptions {
+  /** World size of the map's longest axis. Default 320. */
+  span?: number;
+  /** Extrusion depth. Default 8. */
+  depth?: number;
+  /** Sequential ramp; states are coloured by index. Defaults to the Midnight palette's. */
+  ramp?: string[];
+}
+
+export interface BuiltIndiaState {
+  slug: string;
+  name: string;
+  group: Group;
+  mesh: Mesh;
+}
+
+export interface BuiltIndiaMap {
+  group: Group;
+  states: BuiltIndiaState[];
+  box: Box3;
+  north: Vector3;
+  recolor(ramp: string[]): void;
+  dispose(): void;
+}
+
+export declare function buildIndiaMap(
+  entries: IndiaStateEntry[],
+  opts?: BuildIndiaMapOptions
+): BuiltIndiaMap;
+
+export interface StateRegistryEntry {
+  slug: string;
+  name: string;
+  file: string;
+  districtCount: number;
+  subDistrictCount: number;
+  viewBox: [number, number];
+}
+
+export interface CreateIndiaMapOptions extends BuildIndiaMapOptions {
+  container: HTMLElement | string;
+  /** Already-loaded state docs. Ignored when `registry` + `load` are given. */
+  states?: IndiaStateEntry[];
+  /** The full registry, e.g. `STATES` from `@bharat3d/state-maps/data`. */
+  registry?: StateRegistryEntry[];
+  /** Loader for `registry`; pass `loadStateData` from `@bharat3d/state-maps/data`. */
+  load?: (slug: string) => Promise<StateData | { default: StateData }>;
+  palette?: string;
+  view?: ViewId | string;
+  background?: boolean;
+  grid?: boolean;
+  toolbar?: boolean;
+  position?: MapViewControllerOptions['position'];
+  onViewChange?(viewId: string): void;
+  /** Fired when a state is clicked. */
+  onSelect?(slug: string, state: BuiltIndiaState): void;
+  /** Fired on hover, with `(null, null)` on hover-out. Only wired up if provided. */
+  onHover?(slug: string | null, state: BuiltIndiaState | null): void;
+}
+
+export interface IndiaMapHandle {
+  scene: Scene;
+  camera: PerspectiveCamera;
+  renderer: WebGLRenderer;
+  controller: MapViewController;
+  group: Group;
+  readonly states: BuiltIndiaState[];
+  readonly palette: Palette;
+  setView(id: ViewId | string, opts?: { immediate?: boolean; duration?: number }): Promise<void>;
+  getView(): string | null;
+  setPalette(palette: string | Palette): IndiaMapHandle;
+  resize(): void;
+  destroy(): void;
+}
+
+export declare function createIndiaMap(options: CreateIndiaMapOptions): Promise<IndiaMapHandle>;
+
+/* ------------------------------------------------------------------ *
  * Low-level helpers
  * ------------------------------------------------------------------ */
 
