@@ -4,6 +4,9 @@
   "rewrites": [
     { "source": "/", "destination": "/packages/map-view-controller/examples/india/index.html" },
     { "source": "/vendor/(.*)", "destination": "/packages/map-view-controller/examples/india/vendor/$1" },
+    { "source": "/og.png", "destination": "/packages/map-view-controller/examples/india/og.png" },
+    { "source": "/favicon.svg", "destination": "/packages/map-view-controller/examples/india/favicon.svg" },
+    { "source": "/apple-touch-icon.png", "destination": "/packages/map-view-controller/examples/india/apple-touch-icon.png" },
     { "source": "/src/(.*)", "destination": "/packages/map-view-controller/src/$1" },
     { "source": "/data/(.*)", "destination": "/packages/map-view-controller/data/$1" }
   ],

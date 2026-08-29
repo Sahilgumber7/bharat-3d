@@ -28,6 +28,7 @@
       "types": "./src/data.d.ts",
       "default": "./data/states/index.js"
     },
+    "./data/india-outline": "./data/india-outline.js",
     "./data/*": "./data/states/*",
     "./react": {
       "types": "./src/react.d.ts",
@@ -48,7 +49,9 @@
   "scripts": {
     "demo": "npx --yes serve . -l 5173",
     "build:data": "node tools/build-state-data.mjs",
-    "test": "node --test \"test/*.test.js\""
+    "build:overview": "node tools/build-overview.mjs",
+    "test": "node --test \"test/*.test.js\"",
+    "build:social": "node tools/build-social.mjs"
   },
   "peerDependencies": {
     "three": ">=0.128.0",
@@ -73,5 +76,14 @@
   "devDependencies": {
     "react": "^18.3.1",
     "three": "^0.160.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sahilgumber7/bharat-3d.git",
+    "directory": "packages/map-view-controller"
+  },
+  "homepage": "https://bharat3d.vercel.app",
+  "bugs": {
+    "url": "https://github.com/sahilgumber7/bharat-3d/issues"
   }
 }

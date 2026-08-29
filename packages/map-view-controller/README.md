@@ -1,6 +1,15 @@
 # @bharat3d/state-maps
 
+[![CI](https://github.com/sahilgumber7/bharat-3d/actions/workflows/ci.yml/badge.svg)](https://github.com/sahilgumber7/bharat-3d/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@bharat3d/state-maps.svg)](https://www.npmjs.com/package/@bharat3d/state-maps)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE)
+[![no dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](#install)
+
 3D maps of **every Indian state and union territory** for Three.js — 28 states + 8 UTs, 785 districts, six camera presets, themeable toolbar.
+
+**[Open the live demo →](https://bharat3d.vercel.app)**
+
+[![Every Indian state in 3D](examples/india/og.png)](https://bharat3d.vercel.app)
 
 Give it a container and a state slug. That's the whole integration.
 
