@@ -1,6 +1,6 @@
 # @bharat3d/state-maps
 
-[![CI](https://github.com/sahilgumber7/bharat-3d/actions/workflows/ci.yml/badge.svg)](https://github.com/sahilgumber7/bharat-3d/actions/workflows/ci.yml)
+[![CI](https://github.com/Sahilgumber7/bharat-3d/actions/workflows/ci.yml/badge.svg)](https://github.com/Sahilgumber7/bharat-3d/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@bharat3d/state-maps.svg)](https://www.npmjs.com/package/@bharat3d/state-maps)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE)
 [![no dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](#install)

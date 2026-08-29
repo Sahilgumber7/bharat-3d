@@ -79,11 +79,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sahilgumber7/bharat-3d.git",
+    "url": "git+https://github.com/Sahilgumber7/bharat-3d.git",
     "directory": "packages/map-view-controller"
   },
   "homepage": "https://bharat3d.vercel.app",
   "bugs": {
-    "url": "https://github.com/sahilgumber7/bharat-3d/issues"
+    "url": "https://github.com/Sahilgumber7/bharat-3d/issues"
   }
 }
