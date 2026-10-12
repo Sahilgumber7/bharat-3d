@@ -21,12 +21,13 @@ export function normalise(values, domain) {
   return { t: out, domain: [lo, hi] };
 }
 
-export function createOverlays({ scene, built, getPalette }) {
+export function createOverlays({ scene, built, getPalette, container }) {
   const layer = new THREE.Group();
   layer.name = 'overlays';
   scene.add(layer);
 
   let valueState = null;
+  const labels = []; // { el, pos }
   // Raised states grow up to depth * (1 + relief); keep markers and arcs above that.
   const floor = () => built.depth * (1 + (valueState?.relief || 0));
   const disposables = [];
@@ -77,6 +78,14 @@ export function createOverlays({ scene, built, getPalette }) {
       const m = new THREE.Mesh(geom, mat);
       m.position.copy(built.lonLatToWorld(p.lon, p.lat, floor() + height + 1.2));
       m.userData.point = p;
+      if (p.label && container) {
+        const el = document.createElement('div');
+        el.textContent = p.label;
+        el.setAttribute('aria-hidden', 'true'); // decorative: the data is also in the page's own controls
+        el.style.cssText = `position:absolute;left:0;top:0;pointer-events:none;white-space:nowrap;font:600 11px/1 system-ui,sans-serif;padding:3px 6px;border-radius:6px;color:#fff;background:rgba(14,21,53,.78);border:1px solid rgba(255,255,255,.2);will-change:transform;display:none`;
+        container.appendChild(el);
+        labels.push({ el, pos: m.position.clone().add(new THREE.Vector3(0, 3, 0)) });
+      }
       group.add(m);
       placed.push(m);
       disposables.push(geom, mat);
@@ -108,7 +117,21 @@ export function createOverlays({ scene, built, getPalette }) {
     return { group };
   }
 
+  /** Position HTML labels over their markers. Called once per frame by the host. */
+  const v = new THREE.Vector3();
+  function updateLabels(camera, width, height) {
+    for (const l of labels) {
+      v.copy(l.pos).project(camera);
+      const visible = layer.visible && v.z > -1 && v.z < 1 && Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.05;
+      l.el.style.display = visible ? 'block' : 'none';
+      if (visible) {
+        l.el.style.transform = `translate(${((v.x + 1) / 2) * width + 8}px, ${((1 - v.y) / 2) * height - 18}px)`;
+      }
+    }
+  }
+
   function clear() {
+    for (const l of labels.splice(0)) l.el.remove();
     for (const c of [...layer.children]) layer.remove(c);
     for (const d of disposables.splice(0)) d.dispose();
   }
@@ -126,6 +149,7 @@ export function createOverlays({ scene, built, getPalette }) {
     addArcs,
     clear,
     refresh,
+    updateLabels,
     get legend() {
       return valueState && { domain: valueState.domain, ramp: valueState.ramp };
     },

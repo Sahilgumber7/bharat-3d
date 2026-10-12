@@ -126,7 +126,7 @@ export async function createIndiaMap(options = {}) {
     v.id === 'isometric' ? isoView : v
   );
 
-  const overlays = createOverlays({ scene, built, getPalette: () => palette });
+  const overlays = createOverlays({ scene, built, getPalette: () => palette, container: el });
 
   const mvc = new MapViewController(scene, camera, indiaConfig, {
     renderer,
@@ -245,6 +245,7 @@ export async function createIndiaMap(options = {}) {
     if (disposed) return;
     raf = requestAnimationFrame(tick);
     renderer.render(scene, camera);
+    overlays.updateLabels(camera, el.clientWidth, el.clientHeight);
   };
 
   /* ---------------- public handle ---------------- */

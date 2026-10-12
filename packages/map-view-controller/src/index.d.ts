@@ -392,7 +392,7 @@ export interface IndiaMapHandle {
     opts?: { domain?: [number, number]; relief?: number; ramp?: string[] }
   ): { domain: [number, number]; ramp: string[] };
   clearValues(): void;
-  /** Pin markers to real places. Marker size follows `value`. */
+  /** Pin markers to real places. Marker size follows `value`; a `label` is drawn as text beside it. */
   addPoints(
     points: Array<{ lon: number; lat: number; value?: number; color?: string; label?: string }>,
     opts?: { color?: string; size?: number; height?: number }
