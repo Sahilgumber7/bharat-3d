@@ -32,9 +32,13 @@ india.addPoints([{ lon: 77.1, lat: 28.6, value: 10 }]);
 india.addArcs([{ from: [77.1, 28.6], to: [72.9, 19.1], weight: 6 }]);
 ```
 
-A worked example with **synthetic** logistics data (volume / on-time / returns,
-hubs and flows, paste-your-own-JSON) lives at
-`packages/map-view-controller/examples/logistics/` — `/logistics/` once deployed.
+A cinematic worked example with **synthetic** logistics data lives at
+`packages/map-view-controller/examples/logistics/` (`/logistics/` once
+deployed): a bloom-lit night map, GPU-driven parcel flows along hub-to-hub
+lanes, a festive-season month timeline, click-through drill-down from state to
+hub, and a scripted guided tour. It ships its own vendored Three.js (r160) so
+the rest of the repo is unaffected. Deep links: `?metric=returns&m=9.5&sel=maharashtra`,
+`?intro=0` to skip the fly-in, `?tour=1` to start the tour.
 
 ## Data
 
