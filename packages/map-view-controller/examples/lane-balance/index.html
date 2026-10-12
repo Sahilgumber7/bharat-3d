@@ -3,8 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Lane-Balance — return-leg planner on a 3D India map</title>
-<meta name="description" content="See which lanes will run empty on the way back, how many legs and roughly how much money, then approve one of three fixes. Illustrative data, or load your own trips file. Runs in your browser.">
+<title>Backhaul — fill the empty miles</title>
+<meta name="description" content="Trucks that deliver often drive home empty. Backhaul shows which lanes will run empty, what it costs, and three ways to fill them. Illustrative data, or load your own trips file. Runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Backhaul — fill the empty miles">
+<meta property="og:description" content="See which freight lanes run empty on the return leg, what it costs, and approve a fix. On a 3D map of India.">
+<meta property="og:image" content="/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#f4f5f2">
 <link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,7 +23,7 @@
 <div class="vignette" aria-hidden="true"></div>
 
 <header class="bar">
-  <div class="brand"><span class="mark" aria-hidden="true"></span><div><b>Lane-Balance</b><small>Return-leg planner</small></div></div>
+  <div class="brand"><span class="mark" aria-hidden="true"></span><div><b>Backhaul</b><small>Fill the empty miles</small></div></div>
   <div class="ctl-group">
     <div class="ctl"><span class="cl">Horizon</span>
       <div class="seg" id="hor" role="group" aria-label="Planning horizon"><button data-h="24" type="button">24 h</button><button data-h="48" class="on" type="button">48 h</button><button data-h="72" type="button">72 h</button></div></div>
@@ -56,6 +61,20 @@
   </div>
 </section>
 
+<div class="intro" id="intro" role="dialog" aria-labelledby="introT">
+  <div class="card">
+    <span class="eyebrow">Return-leg planner</span>
+    <h1 id="introT">Trucks deliver loaded.<br>Too many drive home empty.</h1>
+    <p>Backhaul finds the lanes that will run empty on the way back, sizes the gap in legs and rupees, and lets you approve one of three fixes.</p>
+    <ol>
+      <li><b>See</b> the biggest open gaps on the map</li>
+      <li><b>Pick</b> a lane and compare three options</li>
+      <li><b>Approve</b> one, with undo and a decision log</li>
+    </ol>
+    <div class="go"><button class="btn solid" id="introGo" type="button">Show me the biggest gap</button><button class="btn ghost" id="introCsv" type="button">Use your trips file</button></div>
+    <small>Illustrative data. Nothing leaves your browser.</small>
+  </div>
+</div>
 <div class="toast" id="toast" role="status"></div>
 <div id="loader"><div class="ring"></div><span>Building the map…</span></div>
 <noscript><p style="position:fixed;inset:0;display:grid;place-items:center;color:#aaa;font-family:system-ui">This planner needs JavaScript and WebGL.</p></noscript>

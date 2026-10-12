@@ -1,4 +1,4 @@
-// Lane-Balance model: which lanes between a set of gateways will run empty on
+// Backhaul model: which lanes between a set of gateways will run empty on
 // the way back, how many legs, roughly how much money, and three ways to fix it.
 //
 // The simulated numbers are illustrative. With a trips CSV loaded, flows come

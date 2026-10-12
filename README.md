@@ -40,7 +40,7 @@ hub, and a scripted guided tour. It ships its own vendored Three.js (r160) so
 the rest of the repo is unaffected. Deep links: `?metric=returns&m=9.5&sel=maharashtra`,
 `?intro=0` to skip the fly-in, `?tour=1` to start the tour.
 
-## Lane-Balance (return-leg planner)
+## Backhaul (return-leg planner, `examples/lane-balance`)
 
 `packages/map-view-controller/examples/lane-balance/` (`/lane-balance/` once
 deployed) turns the map into a working tool for line-haul planners: which lanes

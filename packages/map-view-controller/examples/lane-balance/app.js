@@ -289,7 +289,15 @@ requestAnimationFrame(() => {
   $('#loader').classList.add('gone');
   map.start();
   // Show the point straight away: open the biggest gap.
-  setTimeout(() => { if (!S.touched) { const top = sortedPairs()[0]; if (top) selectPair(top.key); } }, reduced ? 100 : 2400);
+  const intro = $('#intro');
+  const openTop = () => { const top = sortedPairs()[0]; if (top) selectPair(top.key); };
+  const close = (then) => { intro.classList.add('gone'); setTimeout(() => intro.remove(), 600); try { sessionStorage.setItem('bh-intro', '1'); } catch {} if (then) then(); };
+  let seen = false; try { seen = sessionStorage.getItem('bh-intro') === '1'; } catch {}
+  if (seen || /[?&](sel|open|fast)=/.test(location.search)) { intro.remove(); setTimeout(() => { if (!S.touched && !/sel=/.test(location.search)) openTop(); }, reduced ? 100 : 2400); }
+  else {
+    $('#introGo').onclick = () => close(openTop);
+    $('#introCsv').onclick = () => close(() => $('#csvBtn').click());
+  }
 });
 const Q = new URLSearchParams(location.search);
 if (Q.get('sel')) setTimeout(() => {
