@@ -27,7 +27,11 @@
   .tip { position:fixed; pointer-events:none; padding:6px 10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; font-size:12px; display:none; z-index:5 }
   .tip b { display:block }
   .note { font-size:11px; color:var(--muted); margin-top:12px }
-  @media (max-width:640px) { .panel { width:auto; right:16px; max-height:42%; } }
+  @media (max-width:640px) {
+    #map { inset:0 0 40% 0 }
+    .panel { top:auto; left:8px; right:8px; bottom:8px; width:auto; height:calc(40% - 16px); max-height:none; padding:12px }
+    .sub { display:none } .note { margin-top:8px }
+  }
 </style>
 </head>
 <body>
