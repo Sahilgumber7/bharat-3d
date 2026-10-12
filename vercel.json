@@ -5,6 +5,8 @@
     { "source": "/", "destination": "/packages/map-view-controller/examples/india/index.html" },
     { "source": "/logistics/", "destination": "/packages/map-view-controller/examples/logistics/index.html" },
     { "source": "/india/vendor/(.*)", "destination": "/packages/map-view-controller/examples/india/vendor/$1" },
+    { "source": "/lane-balance/", "destination": "/packages/map-view-controller/examples/lane-balance/index.html" },
+    { "source": "/lane-balance/(.*)", "destination": "/packages/map-view-controller/examples/lane-balance/$1" },
     { "source": "/logistics/(.*)", "destination": "/packages/map-view-controller/examples/logistics/$1" },
     { "source": "/vendor/(.*)", "destination": "/packages/map-view-controller/examples/india/vendor/$1" },
     { "source": "/og.png", "destination": "/packages/map-view-controller/examples/india/og.png" },

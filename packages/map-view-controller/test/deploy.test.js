@@ -13,10 +13,13 @@ const { rewrites } = JSON.parse(read('../../../vercel.json'));
 const covered = (servedPath) =>
   rewrites.some((r) => new RegExp(`^${r.source.replace(/\(\.\*\)/g, '.*')}$`).test(servedPath));
 
-const DIR = '../examples/logistics/';
-const PAGE_URL = '/logistics/';
+const PAGES = [
+  { dir: '../examples/logistics/', url: '/logistics/' },
+  { dir: '../examples/lane-balance/', url: '/lane-balance/' },
+];
 
-test('importmap targets of the logistics page resolve on disk and under the production rewrites', () => {
+for (const { dir: DIR, url: PAGE_URL } of PAGES) {
+test(`${PAGE_URL}: importmap targets resolve on disk and under the production rewrites`, () => {
   const map = JSON.parse(read(DIR + 'index.html').match(/<script type="importmap">\s*([\s\S]*?)<\/script>/)[1]);
   for (const [name, target] of Object.entries(map.imports)) {
     const served = new URL(target, 'https://x.test' + PAGE_URL).pathname;
@@ -25,9 +28,9 @@ test('importmap targets of the logistics page resolve on disk and under the prod
   }
 });
 
-test('every relative import in the logistics app resolves on disk and under the rewrites', () => {
+test(`${PAGE_URL}: every relative import resolves on disk and under the rewrites`, () => {
   const files = readdirSync(here(DIR)).filter((f) => f.endsWith('.js'));
-  assert.ok(files.length >= 4);
+  assert.ok(files.length >= 3);
   for (const f of files) {
     const src = read(DIR + f);
     for (const m of src.matchAll(/(?:from\s+|import\s*\(\s*)['"](\.{1,2}\/[^'"]+)['"]/g)) {
@@ -38,7 +41,7 @@ test('every relative import in the logistics app resolves on disk and under the 
   }
 });
 
-test('the page loads its stylesheet and entry script from paths the rewrites cover', () => {
+test(`${PAGE_URL}: the page loads its stylesheet and entry script from paths the rewrites cover`, () => {
   const html = read(DIR + 'index.html');
   for (const m of html.matchAll(/(?:href|src)="(\.\/[^"]+)"/g)) {
     const served = new URL(m[1], 'https://x.test' + PAGE_URL).pathname;
@@ -46,3 +49,4 @@ test('the page loads its stylesheet and entry script from paths the rewrites cov
     assert.ok(existsSync(here(DIR + m[1])), `${m[1]} is missing on disk`);
   }
 });
+}

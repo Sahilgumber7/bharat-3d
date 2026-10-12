@@ -40,6 +40,24 @@ hub, and a scripted guided tour. It ships its own vendored Three.js (r160) so
 the rest of the repo is unaffected. Deep links: `?metric=returns&m=9.5&sel=maharashtra`,
 `?intro=0` to skip the fly-in, `?tour=1` to start the tour.
 
+## Lane-Balance (return-leg planner)
+
+`packages/map-view-controller/examples/lane-balance/` (`/lane-balance/` once
+deployed) turns the map into a working tool for line-haul planners: which lanes
+between eight gateways will run empty on the way back, how many legs and
+roughly how much money, then three ways to fix it (consolidate held PTL
+freight, list on an FTL marketplace, release hired trailers). A planner reviews
+a dispatch-instruction preview and approves; every decision is logged,
+exportable and reversible. Nothing is ever sent.
+
+- Loaded legs stream as aqua, empty returns as coral; approving a fix turns coral to aqua.
+- Festive-surge slider and 24/48/72 h horizon.
+- **Use your trips file** recomputes everything from a CSV (`origin,destination,loaded,trips,date`)
+  entirely in the browser. Nothing is uploaded.
+- Default numbers are illustrative simulation, labelled as such.
+
+`model.js` has no DOM or Three.js dependency and is covered by tests.
+
 ## Data
 
 Boundaries are bharatlas.com's 2024 LGD snapshot — 785 districts and 6,472

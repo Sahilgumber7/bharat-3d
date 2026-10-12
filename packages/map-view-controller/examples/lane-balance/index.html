@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lane-Balance — return-leg planner on a 3D India map</title>
+<meta name="description" content="See which lanes will run empty on the way back, how many legs and roughly how much money, then approve one of three fixes. Illustrative data, or load your own trips file. Runs in your browser.">
+<meta name="theme-color" content="#05070a">
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div id="stage" aria-hidden="true"></div>
+<div id="labels" aria-hidden="false"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<header class="bar">
+  <div class="brand"><span class="mark" aria-hidden="true"></span><div><b>Lane-Balance</b><small>Return-leg planner</small></div></div>
+  <div class="ctl-group">
+    <div class="ctl"><span class="cl">Horizon</span>
+      <div class="seg" id="hor" role="group" aria-label="Planning horizon"><button data-h="24" type="button">24 h</button><button data-h="48" class="on" type="button">48 h</button><button data-h="72" type="button">72 h</button></div></div>
+    <div class="ctl" id="surgeCtl"><label class="cl" for="surge">Festive surge <b id="sv">+20%</b></label>
+      <input id="surge" type="range" min="0" max="60" step="5" value="20" aria-label="Festive peak surge"></div>
+  </div>
+  <div class="actions">
+    <span class="tag" id="dataTag">Illustrative data</span>
+    <button class="btn ghost" id="csvBtn" type="button">Use your trips file</button>
+    <button class="btn solid" id="pilotBtn" type="button">30-day pilot</button>
+  </div>
+</header>
+
+<section class="kpis" id="kpis" aria-label="Network summary">
+  <div class="kpi"><small>Empty running</small><b id="k1">–</b><em id="k1s"></em></div>
+  <div class="kpi"><small>Open return legs</small><b id="k2">–</b><em id="k2s"></em></div>
+  <div class="kpi"><small>Recoverable</small><b id="k3">–</b><em>blended ₹/km</em></div>
+  <div class="kpi ok"><small>Approved</small><b id="k4">–</b><em id="k4s"></em></div>
+</section>
+
+<aside class="panel list" id="list" aria-label="Biggest open gaps">
+  <h2>Biggest open gaps</h2>
+  <p class="sub">Ranked by value. Pick a lane to plan its return leg.</p>
+  <div id="rank" class="rank"></div>
+  <div class="legend"><span><i class="a"></i>Loaded leg</span><span><i class="c"></i>Empty return</span></div>
+</aside>
+
+<aside class="panel detail" id="detail" aria-live="polite"></aside>
+
+<section class="logbar" id="logbar">
+  <button class="logtoggle" id="logToggle" type="button" aria-expanded="false"><span>Decision log</span><b id="logN">0</b></button>
+  <div class="logbody" id="logBody" hidden>
+    <ul id="log" class="log"></ul>
+    <div class="logacts"><button class="btn ghost sm" id="exportBtn" type="button">Export CSV</button><button class="btn ghost sm" id="resetBtn" type="button">Reset all</button></div>
+  </div>
+</section>
+
+<div class="toast" id="toast" role="status"></div>
+<div id="loader"><div class="ring"></div><span>Building the map…</span></div>
+<noscript><p style="position:fixed;inset:0;display:grid;place-items:center;color:#aaa;font-family:system-ui">This planner needs JavaScript and WebGL.</p></noscript>
+
+<script type="importmap">
+{ "imports": { "three": "../logistics/vendor/three.module.js", "three/addons/": "../logistics/vendor/addons/" } }
+</script>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
