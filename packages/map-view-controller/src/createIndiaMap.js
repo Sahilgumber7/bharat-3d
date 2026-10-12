@@ -126,6 +126,8 @@ export async function createIndiaMap(options = {}) {
     v.id === 'isometric' ? isoView : v
   );
 
+  const overlays = createOverlays({ scene, built, getPalette: () => palette });
+
   const mvc = new MapViewController(scene, camera, indiaConfig, {
     renderer,
     container: el,
@@ -134,10 +136,13 @@ export async function createIndiaMap(options = {}) {
     initialView: view,
     showToolbar: toolbar,
     views,
-    onViewChange,
+    // Overlays are pinned to real places; once states are pulled apart they
+    // would hang in mid-air, so they step aside for the exploded view.
+    onViewChange: (id) => {
+      overlays.layer.visible = id !== 'exploded';
+      onViewChange?.(id);
+    },
   });
-
-  const overlays = createOverlays({ scene, built, getPalette: () => palette });
 
   function applyPalette(next) {
     palette = typeof next === 'string' ? getPalette(next) : next;
