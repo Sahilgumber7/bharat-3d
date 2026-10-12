@@ -334,6 +334,8 @@ export interface BuiltIndiaMap {
   states: BuiltIndiaState[];
   box: Box3;
   north: Vector3;
+  depth: number;
+  lonLatToWorld(lon: number, lat: number, height?: number): Vector3;
   recolor(ramp: string[]): void;
   dispose(): void;
 }
@@ -384,6 +386,26 @@ export interface IndiaMapHandle {
   setView(id: ViewId | string, opts?: { immediate?: boolean; duration?: number }): Promise<void>;
   getView(): string | null;
   setPalette(palette: string | Palette): IndiaMapHandle;
+  /** Colour (and optionally raise) states by `{slug: number}`. Missing slugs stay neutral. */
+  setValues(
+    values: Record<string, number>,
+    opts?: { domain?: [number, number]; relief?: number; ramp?: string[] }
+  ): { domain: [number, number]; ramp: string[] };
+  clearValues(): void;
+  /** Pin markers to real places. Marker size follows `value`. */
+  addPoints(
+    points: Array<{ lon: number; lat: number; value?: number; color?: string; label?: string }>,
+    opts?: { color?: string; size?: number; height?: number }
+  ): { group: Group; meshes: Mesh[] };
+  /** Weighted arcs between lon/lat pairs. Tube width follows `weight`. */
+  addArcs(
+    arcs: Array<{ from: [number, number]; to: [number, number]; weight?: number; color?: string }>,
+    opts?: { color?: string; lift?: number; segments?: number; opacity?: number }
+  ): { group: Group };
+  /** Remove every marker and arc. */
+  clearOverlays(): void;
+  readonly legend: { domain: [number, number]; ramp: string[] } | null;
+  lonLatToWorld(lon: number, lat: number, height?: number): Vector3;
   resize(): void;
   destroy(): void;
 }

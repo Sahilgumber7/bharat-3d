@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bharat3d — logistics network demo</title>
+<meta name="description" content="A 3D India logistics control-tower demo: state-level metrics, hubs and flows. All data is synthetic.">
+<style>
+  :root { --bg:#0E1535; --ink:#e7eaf7; --muted:#9aa3c7; --line:rgba(255,255,255,.14); --panel:rgba(14,21,53,.82); --accent:#ffb020; }
+  * { box-sizing:border-box }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:14px/1.4 system-ui,-apple-system,Segoe UI,Inter,sans-serif }
+  #map { position:fixed; inset:0 }
+  .panel { position:fixed; top:16px; left:16px; width:300px; max-height:calc(100% - 32px); overflow:auto; padding:16px; background:var(--panel); border:1px solid var(--line); border-radius:14px; backdrop-filter:blur(10px) }
+  h1 { font-size:16px; margin:0 0 2px } .sub { color:var(--muted); font-size:12px; margin:0 0 12px }
+  .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:99px; background:rgba(255,176,32,.16); color:var(--accent); border:1px solid rgba(255,176,32,.4); margin-bottom:12px }
+  .seg { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px }
+  button { font:inherit; color:var(--ink); background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; padding:8px 6px; cursor:pointer; min-height:40px }
+  button[aria-pressed=true] { background:var(--accent); color:#0E1535; border-color:var(--accent); font-weight:600 }
+  button:focus-visible, textarea:focus-visible { outline:2px solid #fff; outline-offset:2px }
+  label.row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; color:var(--muted) }
+  .legend { margin:10px 0 4px } .bar { height:10px; border-radius:5px; display:flex; overflow:hidden } .bar i { flex:1 }
+  .ends { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:4px }
+  details { margin-top:12px; border-top:1px solid var(--line); padding-top:10px } summary { cursor:pointer; color:var(--muted) }
+  textarea { width:100%; height:110px; margin-top:8px; background:rgba(0,0,0,.25); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:8px; font:12px ui-monospace,monospace }
+  .err { color:#ff8a8a; font-size:12px; min-height:16px }
+  .tip { position:fixed; pointer-events:none; padding:6px 10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; font-size:12px; display:none; z-index:5 }
+  .tip b { display:block }
+  .note { font-size:11px; color:var(--muted); margin-top:12px }
+  @media (max-width:640px) { .panel { width:auto; right:16px; max-height:42%; } }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="tip" id="tip"></div>
+<aside class="panel">
+  <h1>Network control tower</h1>
+  <p class="sub">State metrics, hubs and flows on a 3D India</p>
+  <span class="badge">Synthetic data — illustrative only</span>
+  <div class="seg" role="group" aria-label="Metric" id="metrics"></div>
+  <label class="row">Raise states by value <input type="checkbox" id="relief" checked></label>
+  <label class="row">Show hub-to-hub flows <input type="checkbox" id="flows" checked></label>
+  <div class="legend"><div class="bar" id="bar"></div><div class="ends"><span id="lo"></span><span id="hi"></span></div></div>
+  <details>
+    <summary>Use your own numbers</summary>
+    <textarea id="json" spellcheck="false" aria-label="State values as JSON" placeholder='{"maharashtra": 120, "delhi": 95, "kerala": 40}'></textarea>
+    <button id="apply" style="margin-top:8px;width:100%">Apply to map</button>
+    <div class="err" id="err" role="alert"></div>
+    <p class="note">Keys are state slugs (e.g. <code>tamil-nadu</code>). Values stay in your browser — nothing is uploaded.</p>
+  </details>
+  <p class="note">Hubs and volumes are randomly generated for the demo. Boundaries: bharatlas.com LGD 2024.</p>
+</aside>
+
+<script type="importmap">
+{ "imports": { "three": "../india/vendor/three/three.module.js" } }
+</script>
+<script type="module">
+import { createIndiaMap } from '../../src/index.js';
+import { STATES, loadStateData } from '../../data/states/index.js';
+
+// ---- synthetic data (seeded, so the demo is stable between loads) ----
+let seed = 7;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const WEIGHT = { maharashtra: 1, 'uttar-pradesh': .9, 'tamil-nadu': .8, karnataka: .8, gujarat: .75, delhi: .85, telangana: .7, 'west-bengal': .6, haryana: .65, rajasthan: .5, kerala: .5, 'madhya-pradesh': .45, bihar: .4, punjab: .4, odisha: .3, assam: .25, jharkhand: .25 };
+const slugs = STATES.map((s) => s.slug);
+const w = (s) => WEIGHT[s] ?? 0.15;
+const DATA = {
+  volume:  Object.fromEntries(slugs.map((s) => [s, Math.round(w(s) * 100 + rnd() * 18)])),
+  ontime:  Object.fromEntries(slugs.map((s) => [s, +(82 + rnd() * 16 - (1 - w(s)) * 4).toFixed(1)])),
+  returns: Object.fromEntries(slugs.map((s) => [s, +(3 + rnd() * 9 + (1 - w(s)) * 3).toFixed(1)])),
+};
+const METRICS = [
+  { id: 'volume', label: 'Volume', unit: ' k/day' },
+  { id: 'ontime', label: 'On-time', unit: '%' },
+  { id: 'returns', label: 'Returns', unit: '%' },
+];
+const HUBS = [
+  ['Delhi NCR', 77.1, 28.6, 10], ['Mumbai', 72.9, 19.1, 9], ['Bengaluru', 77.6, 12.97, 8], ['Hyderabad', 78.5, 17.4, 6],
+  ['Chennai', 80.27, 13.08, 6], ['Kolkata', 88.36, 22.57, 5], ['Ahmedabad', 72.57, 23.03, 4], ['Pune', 73.86, 18.52, 4],
+  ['Jaipur', 75.8, 26.9, 3], ['Lucknow', 80.95, 26.85, 3], ['Guwahati', 91.74, 26.14, 2], ['Kochi', 76.27, 9.93, 2],
+];
+const FLOWS = [[0,1,10],[0,2,6],[0,5,6],[0,8,5],[0,9,5],[1,2,7],[1,7,6],[1,6,5],[2,3,6],[2,4,6],[3,4,4],[5,10,3],[4,11,3],[2,11,3],[1,3,4],[5,3,3]];
+
+const state = { metric: 'volume' };
+const $ = (id) => document.getElementById(id);
+const nameOf = Object.fromEntries(STATES.map((s) => [s.slug, s.name]));
+let custom = null;
+
+const india = await createIndiaMap({
+  container: '#map', registry: STATES, load: loadStateData, palette: 'midnight', toolbar: true,
+  onHover(slug, st) {
+    const tip = $('tip');
+    if (!slug) { tip.style.display = 'none'; return; }
+    const m = METRICS.find((x) => x.id === state.metric);
+    const v = (custom ?? DATA[state.metric])[slug];
+    tip.innerHTML = `<b>${nameOf[slug]}</b>${v == null ? 'no data' : v + (custom ? '' : m.unit)}`;
+    tip.style.display = 'block';
+  },
+});
+window.addEventListener('pointermove', (e) => { const t = $('tip'); t.style.left = e.clientX + 14 + 'px'; t.style.top = e.clientY + 14 + 'px'; });
+
+function draw() {
+  const relief = $('relief').checked ? 0.9 : 0;
+  // On-time is better when high; returns are worse when high — reverse the ramp so "dark = attention" reads consistently.
+  const values = custom ?? DATA[state.metric];
+  const { domain, ramp } = india.setValues(values, { relief });
+  const fmt = (v) => (Number.isInteger(v) ? v : v.toFixed(1));
+  $('lo').textContent = fmt(domain[0]); $('hi').textContent = fmt(domain[1]);
+  $('bar').innerHTML = ramp.map((c) => `<i style="background:${c}"></i>`).join('');
+  india.clearOverlays();
+  india.addPoints(HUBS.map(([label, lon, lat, value]) => ({ label, lon, lat, value })), { color: '#ffb020' });
+  if ($('flows').checked)
+    india.addArcs(FLOWS.map(([a, b, weight]) => ({ from: [HUBS[a][1], HUBS[a][2]], to: [HUBS[b][1], HUBS[b][2]], weight })), { color: '#ffd37a' });
+}
+
+const seg = $('metrics');
+for (const m of METRICS) {
+  const b = document.createElement('button');
+  b.textContent = m.label; b.dataset.id = m.id; b.setAttribute('aria-pressed', m.id === state.metric);
+  b.onclick = () => { custom = null; state.metric = m.id; [...seg.children].forEach((c) => c.setAttribute('aria-pressed', c.dataset.id === m.id)); draw(); };
+  seg.appendChild(b);
+}
+$('relief').onchange = draw; $('flows').onchange = draw;
+$('apply').onclick = () => {
+  const err = $('err'); err.textContent = '';
+  try {
+    const obj = JSON.parse($('json').value);
+    const bad = Object.keys(obj).filter((k) => !nameOf[k]);
+    if (bad.length) throw new Error('Unknown state slug: ' + bad.slice(0, 3).join(', '));
+    if (!Object.values(obj).every(Number.isFinite)) throw new Error('Every value must be a number');
+    custom = obj; [...seg.children].forEach((c) => c.setAttribute('aria-pressed', 'false')); draw();
+  } catch (e) { err.textContent = e.message; }
+};
+draw();
+window.__india = india;
+</script>
+</body>
+</html>

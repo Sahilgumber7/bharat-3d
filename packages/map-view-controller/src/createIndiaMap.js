@@ -4,6 +4,7 @@ import { buildIndiaMap } from './india-map.js';
 import { getPalette, PALETTES } from './palettes.js';
 import { DEFAULT_VIEWS } from './views.js';
 import { fitBox } from './geometry.js';
+import { createOverlays } from './overlay.js';
 
 /**
  * Batteries-included entry point: a clickable, themeable, 3D national picker
@@ -136,6 +137,8 @@ export async function createIndiaMap(options = {}) {
     onViewChange,
   });
 
+  const overlays = createOverlays({ scene, built, getPalette: () => palette });
+
   function applyPalette(next) {
     palette = typeof next === 'string' ? getPalette(next) : next;
     scene.background = background ? new THREE.Color(palette.surface) : null;
@@ -163,6 +166,7 @@ export async function createIndiaMap(options = {}) {
     }
 
     built.recolor(palette.ramp);
+    overlays.refresh();
     mvc.setTheme(palette.theme);
     return api;
   }
@@ -259,9 +263,25 @@ export async function createIndiaMap(options = {}) {
     /** Swap colours — scene, lights, grid, toolbar and per-state fills. */
     setPalette: applyPalette,
 
+    /** Colour (and optionally raise) states by `{slug: number}`. See overlay.js. */
+    setValues: overlays.setValues,
+    clearValues: overlays.clearValues,
+    /** Pin markers (`[{lon, lat, value?, label?}]`) to real places. */
+    addPoints: overlays.addPoints,
+    /** Draw weighted arcs (`[{from:[lon,lat], to:[lon,lat], weight?}]`). */
+    addArcs: overlays.addArcs,
+    /** Remove every marker and arc. */
+    clearOverlays: overlays.clear,
+    get legend() {
+      return overlays.legend;
+    },
+    /** Project lon/lat to a world position on the map (for custom labels). */
+    lonLatToWorld: built.lonLatToWorld,
+
     resize,
 
     destroy() {
+      overlays.dispose();
       disposed = true;
       if (raf !== null) cancelAnimationFrame(raf);
       ro?.disconnect();

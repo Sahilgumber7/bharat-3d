@@ -3,6 +3,7 @@
   "trailingSlash": true,
   "rewrites": [
     { "source": "/", "destination": "/packages/map-view-controller/examples/india/index.html" },
+    { "source": "/logistics/", "destination": "/packages/map-view-controller/examples/logistics/index.html" },
     { "source": "/vendor/(.*)", "destination": "/packages/map-view-controller/examples/india/vendor/$1" },
     { "source": "/og.png", "destination": "/packages/map-view-controller/examples/india/og.png" },
     { "source": "/favicon.svg", "destination": "/packages/map-view-controller/examples/india/favicon.svg" },

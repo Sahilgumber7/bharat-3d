@@ -28,6 +28,8 @@ import { PALETTES } from './palettes.js';
  *   states: Array<{slug, name, group: THREE.Group, mesh: THREE.Mesh}>,
  *   box: THREE.Box3,
  *   north: THREE.Vector3,
+ *   depth: number,
+ *   lonLatToWorld(lon: number, lat: number, height?: number): THREE.Vector3,
  *   recolor(ramp: string[]): void,
  *   dispose(): void,
  * }}
@@ -121,7 +123,14 @@ export function buildIndiaMap(entries, opts = {}) {
     }
   };
 
-  return { group, states, box, north: new THREE.Vector3(0, 0, -1), recolor, dispose };
+  // Real lon/lat -> world position on the shared canvas (y = height above the
+  // ground plane). Lets callers pin hubs, routes and labels to real places.
+  const lonLatToWorld = (lon, lat, height = 0) => {
+    const [x, y] = project([lon, lat]);
+    return new THREE.Vector3(x, height, -y);
+  };
+
+  return { group, states, box, north: new THREE.Vector3(0, 0, -1), depth, lonLatToWorld, recolor, dispose };
 }
 
 export default buildIndiaMap;

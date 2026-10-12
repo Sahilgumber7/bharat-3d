@@ -21,6 +21,21 @@ npm run demo      # gallery of all 36 states/UTs → localhost:5173/examples/ind
 
 See the [package README](packages/map-view-controller/README.md) for the API.
 
+## Data overlays
+
+`createIndiaMap` can draw your own numbers on the map: per-state colour and
+relief, markers pinned to real lon/lat, and weighted arcs between places.
+
+```js
+india.setValues({ maharashtra: 120, delhi: 95 }, { relief: 0.9 });
+india.addPoints([{ lon: 77.1, lat: 28.6, value: 10 }]);
+india.addArcs([{ from: [77.1, 28.6], to: [72.9, 19.1], weight: 6 }]);
+```
+
+A worked example with **synthetic** logistics data (volume / on-time / returns,
+hubs and flows, paste-your-own-JSON) lives at
+`packages/map-view-controller/examples/logistics/` — `/logistics/` once deployed.
+
 ## Data
 
 Boundaries are bharatlas.com's 2024 LGD snapshot — 785 districts and 6,472
