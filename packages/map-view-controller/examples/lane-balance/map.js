@@ -1,17 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { buildGeo, SPAN } from '../logistics/geo.js';
-import { createGround } from '../logistics/network.js';
 import { HUBS, NH } from './model.js';
 
 const PLANE = 6;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-const AQUA = new THREE.Color('#5ef2e6');
+const TEAL = new THREE.Color('#0f766e');
+const BG = '#f4f5f2';
 
 /**
  * The map: dark country, eight gateways, and for every lane pair two streams
@@ -22,27 +18,19 @@ const AQUA = new THREE.Color('#5ef2e6');
 export function createMap({ stage, labelsEl, onPickPair, onPickHub }) {
   const fast = new URLSearchParams(location.search).get('fast') === '1'; // test/screenshot aid: skip the intro and flights
   const small = innerWidth < 760;
-  const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   const DPR = Math.min(devicePixelRatio || 1, small ? 1.5 : 2);
   renderer.setPixelRatio(DPR);
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
   stage.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#05070a');
-  scene.fog = new THREE.FogExp2(0x05070a, 0.0008);
+  scene.background = new THREE.Color(BG);
+  scene.fog = new THREE.FogExp2(0xf4f5f2, 0.0006);
   const camera = new THREE.PerspectiveCamera(38, 1, 1, 6000);
-  scene.add(new THREE.HemisphereLight(0x8fd8d2, 0x040608, 0.55));
-  const key = new THREE.DirectionalLight(0xdff6ff, 1.3); key.position.set(-160, 300, 260);
-  const rim = new THREE.DirectionalLight(0x58e6da, 0.9); rim.position.set(120, 90, -300);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xcfd6d2, 1.55));
+  const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(-180, 320, 240);
+  const rim = new THREE.DirectionalLight(0xdfeeea, 0.7); rim.position.set(140, 80, -280);
   scene.add(key, rim);
-
-  const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: small ? 0 : 4 }));
-  composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.5, 0.5, 0.4);
-  composer.addPass(bloom);
-  composer.addPass(new OutputPass());
 
   const controls = new OrbitControls(camera, renderer.domElement);
   Object.assign(controls, { enableDamping: true, dampingFactor: 0.07, minDistance: 60, maxDistance: 900, maxPolarAngle: 1.38, screenSpacePanning: false });
@@ -50,12 +38,28 @@ export function createMap({ stage, labelsEl, onPickPair, onPickHub }) {
   /* world */
   const geo = buildGeo();
   scene.add(geo.group);
-  scene.add(createGround(SPAN));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(SPAN * 4, SPAN * 4), new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix*vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }',
+    fragmentShader: `varying vec3 vW; void main(){
+      float d = length(vW.xz) / ${(SPAN * 1.7).toFixed(1)};
+      vec2 g = fract(vW.xz / 12.0) - 0.5;
+      float dots = smoothstep(0.07, 0.02, length(g));
+      float halo = exp(-pow(length(vW.xz * vec2(0.9, 0.75)) / ${(SPAN * 0.6).toFixed(1)}, 2.0));
+      vec3 col = mix(vec3(0.957, 0.961, 0.949), vec3(1.0), halo * 0.8) - vec3(0.03, 0.02, 0.02) * dots * (1.0 - d);
+      gl_FragColor = vec4(col, 1.0 - smoothstep(0.6, 1.0, d));
+    }`,
+  }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.4; ground.raycast = () => {};
+  scene.add(ground);
   // calm the states: no per-state glow here, the lanes are the story
   for (const st of geo.states) {
     st.group.scale.y = 1.4;
-    st.mesh.material.emissive.set(0x04100f);
-    st.lines.material.opacity = 0.09;
+    st.mesh.material.color.set('#e3e8e4');
+    st.mesh.material.emissive.set(0x000000);
+    st.mesh.material.roughness = 0.95; st.mesh.material.metalness = 0;
+    st.lines.material.color.set('#4d6662');
+    st.lines.material.opacity = 0.2;
   }
 
   const hubs = HUBS.map((h) => ({ ...h, pos: geo.lonLat(h.lon, h.lat, PLANE) }));
@@ -66,18 +70,18 @@ export function createMap({ stage, labelsEl, onPickPair, onPickHub }) {
   const tex = (() => {
     const c = document.createElement('canvas'); c.width = c.height = 128;
     const g = c.getContext('2d'); const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.2, 'rgba(160,255,245,.5)'); gr.addColorStop(0.55, 'rgba(60,200,190,.1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    gr.addColorStop(0, 'rgba(15,118,110,.55)'); gr.addColorStop(0.25, 'rgba(15,118,110,.22)'); gr.addColorStop(0.6, 'rgba(15,118,110,.06)'); gr.addColorStop(1, 'rgba(15,118,110,0)');
     g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
   })();
   const hubObjs = hubs.map((h) => {
     const g = new THREE.Group();
     g.position.set(h.pos.x, 0, h.pos.z);
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true }));
     glow.scale.setScalar(18); glow.position.y = PLANE;
-    const core = new THREE.Mesh(new THREE.SphereGeometry(1.15, 16, 12), new THREE.MeshBasicMaterial({ color: 0xeafffc }));
+    const core = new THREE.Mesh(new THREE.SphereGeometry(1.15, 16, 12), new THREE.MeshBasicMaterial({ color: 0x0b3d38 }));
     core.position.y = PLANE;
-    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.4, PLANE, 8, 1, true), new THREE.MeshBasicMaterial({ color: AQUA, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.4, PLANE, 8, 1, true), new THREE.MeshBasicMaterial({ color: TEAL, transparent: true, opacity: 0.4, depthWrite: false }));
     stem.position.y = PLANE / 2;
     g.add(stem, glow, core); [stem, glow, core].forEach((m) => (m.raycast = () => {}));
     root.add(g);
@@ -103,7 +107,7 @@ export function createMap({ stage, labelsEl, onPickPair, onPickHub }) {
 
   const baseLines = curves.map((c, d) => {
     const pts = new THREE.QuadraticBezierCurve3(c.a, c.mid, c.b).getPoints(40);
-    const m = new THREE.LineBasicMaterial({ color: AQUA, transparent: true, opacity: 0.05, blending: THREE.AdditiveBlending, depthWrite: false });
+    const m = new THREE.LineBasicMaterial({ color: TEAL, transparent: true, opacity: 0.16, depthWrite: false });
     const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), m);
     l.raycast = () => {};
     root.add(l);
@@ -128,7 +132,7 @@ export function createMap({ stage, labelsEl, onPickPair, onPickHub }) {
     uVis: { value: new Array(ND).fill(0) }, uEmpty: { value: new Array(ND).fill(0) }, uFocus: { value: new Array(ND).fill(1) },
   };
   const pm = new THREE.ShaderMaterial({
-    uniforms: U, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: U, transparent: true, depthWrite: false,
     vertexShader: `
       #define ND ${ND}
       uniform float uClock, uPixel, uIntro;
@@ -145,11 +149,11 @@ export function createMap({ stage, labelsEl, onPickPair, onPickHub }) {
         float fade = smoothstep(0.0, 0.07, t) * smoothstep(1.0, 0.93, t);
         float coral = step(aRank2, uEmpty[l]);
         float show = step(aRank, uVis[l] * uIntro);
-        vA = fade * show * (0.22 + 0.78 * uFocus[l]);
-        vCol = mix(vec3(0.12, 0.85, 0.78), vec3(1.0, 0.16, 0.07), coral);
-        gl_PointSize = aSz * (1.5 + coral * 1.5) * uPixel / max(1.0, -mv.z) * (0.75 + 0.45 * uFocus[l]);
+        vA = fade * show * (0.42 + 0.58 * uFocus[l]);
+        vCol = mix(vec3(0.04, 0.50, 0.46), vec3(0.88, 0.20, 0.07), coral);
+        gl_PointSize = aSz * (2.2 + coral * 1.8) * uPixel / max(1.0, -mv.z) * (0.75 + 0.45 * uFocus[l]);
       }`,
-    fragmentShader: `varying vec3 vCol; varying float vA; void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d); a *= a; gl_FragColor = vec4(vCol * 1.25, a * vA * 0.8); }`,
+    fragmentShader: `varying vec3 vCol; varying float vA; void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d); a *= a; gl_FragColor = vec4(vCol, min(1.0, a * vA * 1.5)); }`,
   });
   const points = new THREE.Points(pg, pm);
   points.frustumCulled = false; points.raycast = () => {};
@@ -227,7 +231,7 @@ export function createMap({ stage, labelsEl, onPickPair, onPickHub }) {
     }
     applyFocus();
   }
-  const CORAL = new THREE.Color('#ff5a3c');
+  const CORAL = new THREE.Color('#d83a14');
   function applyFocus() {
     pairs.forEach((pp, pi) => {
       const sel = focusKey === pp.key;
@@ -237,8 +241,8 @@ export function createMap({ stage, labelsEl, onPickPair, onPickHub }) {
         const idx = pi * 2 + d, line = baseLines[idx];
         U.uFocus.value[idx] = f;
         const light = d !== heavyOf[pp.key];
-        line.material.color.copy(sel && light ? CORAL : AQUA);
-        line.material.opacity = sel ? (light ? 0.7 : 0.5) : near ? 0.28 : focusKey || focusHub != null ? 0.02 : 0.05;
+        line.material.color.copy(sel && light ? CORAL : TEAL);
+        line.material.opacity = sel ? (light ? 0.8 : 0.6) : near ? 0.35 : focusKey || focusHub != null ? 0.04 : 0.16;
       }
     });
     chips.forEach((c) => c.el.classList.toggle('on', c.key === focusKey));
@@ -285,13 +289,13 @@ export function createMap({ stage, labelsEl, onPickPair, onPickHub }) {
       const e = hubLabels[i].el.classList.contains('on') ? 1.35 : 1;
       o.glow.scale.setScalar(18 * e * (1 + 0.06 * Math.sin(time * 2 + i)));
     });
-    composer.render();
+    renderer.render(scene, camera);
     const w = innerWidth, h = innerHeight;
     project(hubLabels, w, h); project(chips, w, h, true);
   }
   function resize() {
     const w = innerWidth, h = innerHeight;
-    renderer.setSize(w, h, false); composer.setSize(w, h); bloom.setSize(w * DPR * 0.5, h * DPR * 0.5);
+    renderer.setSize(w, h, false);
     camera.aspect = w / h; camera.updateProjectionMatrix(); U.uPixel.value = h * DPR;
   }
   addEventListener('resize', resize);
