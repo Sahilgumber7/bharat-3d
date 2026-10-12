@@ -18,6 +18,7 @@
   button[aria-pressed=true] { background:var(--accent); color:#0E1535; border-color:var(--accent); font-weight:600 }
   button:focus-visible, textarea:focus-visible { outline:2px solid #fff; outline-offset:2px }
   label.row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; color:var(--muted) }
+  .time { margin:4px 0 8px } .trow { display:flex; align-items:center; gap:10px; margin-bottom:6px } output { font-weight:600; color:var(--accent) } input[type=range] { width:100%; accent-color:var(--accent) }
   .legend { margin:10px 0 4px } .bar { height:10px; border-radius:5px; display:flex; overflow:hidden } .bar i { flex:1 }
   .ends { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:4px }
   details { margin-top:12px; border-top:1px solid var(--line); padding-top:10px } summary { cursor:pointer; color:var(--muted) }
@@ -37,6 +38,10 @@
   <p class="sub">State metrics, hubs and flows on a 3D India</p>
   <span class="badge">Synthetic data — illustrative only</span>
   <div class="seg" role="group" aria-label="Metric" id="metrics"></div>
+  <div class="time">
+    <div class="trow"><button id="play" aria-label="Play months" style="width:44px">▶</button><output id="mon" for="month">Jan</output></div>
+    <input type="range" id="month" min="0" max="11" value="0" step="1" aria-label="Month">
+  </div>
   <label class="row">Raise states by value <input type="checkbox" id="relief" checked></label>
   <label class="row">Show hub-to-hub flows <input type="checkbox" id="flows" checked></label>
   <div class="legend"><div class="bar" id="bar"></div><div class="ends"><span id="lo"></span><span id="hi"></span></div></div>
@@ -68,6 +73,21 @@ const DATA = {
   ontime:  Object.fromEntries(slugs.map((s) => [s, +(82 + rnd() * 16 - (1 - w(s)) * 4).toFixed(1)])),
   returns: Object.fromEntries(slugs.map((s) => [s, +(3 + rnd() * 9 + (1 - w(s)) * 3).toFixed(1)])),
 };
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+// Festive-season peak around Oct–Nov, with a per-state phase so states don't move in lockstep.
+const PHASE = Object.fromEntries(slugs.map((s) => [s, rnd() * 1.2 - 0.6]));
+const season = (s, m) => 1 + 0.3 * Math.exp(-(((m + PHASE[s] - 9.5) / 1.8) ** 2)) - 0.08 * Math.cos((m / 12) * 2 * Math.PI);
+function seriesFor(metric, s, m) {
+  const base = DATA[metric][s];
+  if (metric === 'volume') return Math.round(base * season(s, m));
+  if (metric === 'ontime') return +(base - 5 * (season(s, m) - 1) / 0.3 * 0.6).toFixed(1); // slips under peak load
+  return +(base + 3 * (season(s, m) - 1) / 0.3).toFixed(1); // returns rise after peak
+}
+const monthly = (metric, m) => Object.fromEntries(slugs.map((s) => [s, seriesFor(metric, s, m)]));
+const DOMAIN = Object.fromEntries(['volume', 'ontime', 'returns'].map((k) => {
+  const all = MONTHS.flatMap((_, m) => Object.values(monthly(k, m)));
+  return [k, [Math.min(...all), Math.max(...all)]];
+}));
 const METRICS = [
   { id: 'volume', label: 'Volume', unit: ' k/day' },
   { id: 'ontime', label: 'On-time', unit: '%' },
@@ -80,7 +100,7 @@ const HUBS = [
 ];
 const FLOWS = [[0,1,10],[0,2,6],[0,5,6],[0,8,5],[0,9,5],[1,2,7],[1,7,6],[1,6,5],[2,3,6],[2,4,6],[3,4,4],[5,10,3],[4,11,3],[2,11,3],[1,3,4],[5,3,3]];
 
-const state = { metric: 'volume' };
+const state = { metric: 'volume', month: 0 };
 const $ = (id) => document.getElementById(id);
 const nameOf = Object.fromEntries(STATES.map((s) => [s.slug, s.name]));
 let custom = null;
@@ -91,26 +111,38 @@ const india = await createIndiaMap({
     const tip = $('tip');
     if (!slug) { tip.style.display = 'none'; return; }
     const m = METRICS.find((x) => x.id === state.metric);
-    const v = (custom ?? DATA[state.metric])[slug];
+    const v = (custom ?? monthly(state.metric, state.month))[slug];
     tip.innerHTML = `<b>${nameOf[slug]}</b>${v == null ? 'no data' : v + (custom ? '' : m.unit)}`;
     tip.style.display = 'block';
   },
 });
 window.addEventListener('pointermove', (e) => { const t = $('tip'); t.style.left = e.clientX + 14 + 'px'; t.style.top = e.clientY + 14 + 'px'; });
 
-function draw() {
+function paint() {
   const relief = $('relief').checked ? 0.9 : 0;
-  // On-time is better when high; returns are worse when high — reverse the ramp so "dark = attention" reads consistently.
-  const values = custom ?? DATA[state.metric];
-  const { domain, ramp } = india.setValues(values, { relief });
+  const values = custom ?? monthly(state.metric, state.month);
+  // Fixed domain across all months, so the colours mean the same thing as time moves.
+  const { domain, ramp } = india.setValues(values, { relief, domain: custom ? undefined : DOMAIN[state.metric] });
   const fmt = (v) => (Number.isInteger(v) ? v : v.toFixed(1));
   $('lo').textContent = fmt(domain[0]); $('hi').textContent = fmt(domain[1]);
   $('bar').innerHTML = ramp.map((c) => `<i style="background:${c}"></i>`).join('');
+  $('mon').textContent = custom ? 'custom' : MONTHS[state.month];
+}
+function draw() {
+  paint();
   india.clearOverlays();
   india.addPoints(HUBS.map(([label, lon, lat, value]) => ({ label, lon, lat, value })), { color: '#ffb020' });
   if ($('flows').checked)
     india.addArcs(FLOWS.map(([a, b, weight]) => ({ from: [HUBS[a][1], HUBS[a][2]], to: [HUBS[b][1], HUBS[b][2]], weight })), { color: '#ffd37a' });
 }
+let timer = null;
+function stop() { clearInterval(timer); timer = null; $('play').textContent = '▶'; $('play').setAttribute('aria-label', 'Play months'); }
+$('month').oninput = (e) => { state.month = +e.target.value; custom = null; paint(); };
+$('play').onclick = () => {
+  if (timer) return stop();
+  custom = null; $('play').textContent = '❚❚'; $('play').setAttribute('aria-label', 'Pause');
+  timer = setInterval(() => { state.month = (state.month + 1) % 12; $('month').value = state.month; paint(); }, 900);
+};
 
 const seg = $('metrics');
 for (const m of METRICS) {
