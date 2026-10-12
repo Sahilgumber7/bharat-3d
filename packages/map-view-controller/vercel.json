@@ -3,6 +3,7 @@
   "trailingSlash": true,
   "rewrites": [
     { "source": "/", "destination": "/examples/india/index.html" },
+    { "source": "/india/vendor/(.*)", "destination": "/examples/india/vendor/$1" },
     { "source": "/vendor/(.*)", "destination": "/examples/india/vendor/$1" }
   ],
   "headers": [
